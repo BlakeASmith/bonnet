@@ -1,14 +1,15 @@
 """Domain layer that returns Pydantic models after database fetches."""
 
-from ._models import Attribute, Entity, ContextTree, SearchResult
-from ._input_models import (
+from _models import Attribute, Entity, ContextTree, SearchResult, Node, Edge
+from typing import Dict
+from _input_models import (
     GetEntityContextInput,
     SearchInput,
     StoreEntityInput,
     StoreAttributeInput,
     CreateEdgeInput,
 )
-from . import database
+import database
 
 
 def get_entity_context(input: GetEntityContextInput) -> ContextTree:
@@ -54,57 +55,82 @@ def search(input: SearchInput) -> ContextTree:
         input: SearchInput containing query, include_related, and max_depth
         
     Returns:
-        ContextTree containing search results and related records
+        ContextTree containing the graph structure
     """
-    # Search the knowledge graph
-    search_data = database.search_knowledge_graph(
+    # Get the graph structure
+    graph_structure = database.get_graph_structure(
         input.query, 
         input.include_related, 
         input.max_depth
     )
     
-    # Convert search results to SearchResult models
-    search_results = []
-    for result in search_data['search_results']:
-        search_result = SearchResult(
-            searchable_content=result['searchable_content'],
-            source=result['source']
+    # Convert graph structure to ContextTree
+    def build_context_tree(node_data: Dict) -> ContextTree:
+        # Create the node model
+        node = Node(
+            id=node_data['node']['id'],
+            table_name=node_data['node']['table_name'],
+            record_id=node_data['node']['record_id'],
+            searchable_content=node_data['node']['searchable_content']
         )
         
-        if result['source'] == 'node':
-            search_result.node_id = result['node_id']
-            search_result.table_name = result['table_name']
-            search_result.record_id = result['record_id']
-        else:  # edge
-            search_result.edge_id = result['edge_id']
-            search_result.from_node_id = result['from_node_id']
-            search_result.to_node_id = result['to_node_id']
-            search_result.edge_type = result['edge_type']
-        
-        search_results.append(search_result)
-    
-    # Convert related records to appropriate models
-    related_records = []
-    for record_data in search_data['related_records']:
-        if record_data['type'] == 'entity':
+        # Create the record model (entity or attribute)
+        entity = None
+        attribute = None
+        if node_data['record']['type'] == 'entity':
             entity = Entity(
-                id=record_data['id'],
-                name=record_data['name']
+                id=node_data['record']['id'],
+                name=node_data['record']['name']
             )
-            related_records.append(entity)
-        elif record_data['type'] == 'attribute':
+        elif node_data['record']['type'] == 'attribute':
             attribute = Attribute(
-                id=record_data['id'],
-                type=record_data['attr_type'],
-                subject=record_data['subject'],
-                detail=record_data['detail']
+                id=node_data['record']['id'],
+                type=node_data['record']['attr_type'],
+                subject=node_data['record']['subject'],
+                detail=node_data['record']['detail']
             )
-            related_records.append(attribute)
+        
+        # Create edge models
+        edges = []
+        for edge_data in node_data['edges']:
+            edge = Edge(
+                id=edge_data['id'],
+                from_node_id=edge_data['from_node_id'],
+                to_node_id=edge_data['to_node_id'],
+                edge_type=edge_data['edge_type'],
+                searchable_content=edge_data['searchable_content']
+            )
+            edges.append(edge)
+        
+        # Recursively build children
+        children = []
+        for child_data in node_data['children']:
+            child_tree = build_context_tree(child_data)
+            children.append(child_tree)
+        
+        return ContextTree(
+            node=node,
+            entity=entity,
+            attribute=attribute,
+            children=children,
+            edges=edges
+        )
     
-    return ContextTree(
-        search_results=search_results,
-        related_records=related_records
-    )
+    # Build the root context tree
+    if not graph_structure:
+        return ContextTree()
+    
+    # If multiple root nodes, create a wrapper tree
+    if len(graph_structure) == 1:
+        return build_context_tree(graph_structure[0])
+    else:
+        # Multiple root nodes - create a wrapper
+        children = []
+        for node_data in graph_structure:
+            child_tree = build_context_tree(node_data)
+            children.append(child_tree)
+        
+        return ContextTree(children=children)
 
 
 def store_entity(input: StoreEntityInput) -> bool:

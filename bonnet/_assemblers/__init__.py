@@ -1,6 +1,7 @@
 from typing import Protocol, Union
 
-from .._models import Entity, ContextTree, SearchResult, Attribute
+from _models import Entity, ContextTree, SearchResult, Attribute
+from typing import List
 
 
 class Assembler(Protocol):
@@ -33,27 +34,58 @@ def xml_assembler() -> Assembler:
     def assemble_attribute(attribute: Attribute) -> str:
         return f"<attribute id=\"{attribute.id}\" type=\"{attribute.type}\">{attribute.subject}:{attribute.detail}</attribute>"
     
+    return assemble
     
-    def assemble(context: ContextTree) -> str:
-        lines = ["<context>"]
+    
+def assemble(context: ContextTree) -> str:
+    """Assemble a ContextTree into XML format, recursively traversing the graph structure."""
+    
+    def assemble_attribute(attribute: Attribute) -> str:
+        return f"<attribute id=\"{attribute.id}\" type=\"{attribute.type}\">{attribute.subject}:{attribute.detail}</attribute>"
+    
+    lines = ["<context>"]
+    
+    # Recursively assemble the tree structure
+    def assemble_tree(tree: ContextTree, indent_level: int = 1) -> List[str]:
+        result_lines = []
+        indent = "  " * indent_level
         
-        # Add entities from the context
-        if context.entities:
-            for entity in context.entities:
-                if isinstance(entity, Entity):
-                    for line in assemble_entity(entity).splitlines():
-                        lines.append(f"  {line}")
+        # If this node has an entity, render it
+        if tree.entity:
+            result_lines.append(f"{indent}<entity id=\"{tree.entity.id}\">")
+            result_lines.append(f"{indent}  <name>{tree.entity.name}</name>")
+            
+            # Add attributes if any
+            if tree.entity.attributes:
+                for attr in tree.entity.attributes:
+                    result_lines.append(f"{indent}  {assemble_attribute(attr)}")
+            
+            # Add edges as relationships
+            if tree.edges:
+                for edge in tree.edges:
+                    result_lines.append(f"{indent}  <relationship type=\"{edge.edge_type}\" to=\"{edge.to_node_id}\">")
+                    if edge.searchable_content:
+                        result_lines.append(f"{indent}    <content>{edge.searchable_content}</content>")
+                    result_lines.append(f"{indent}  </relationship>")
+            
+            result_lines.append(f"{indent}</entity>")
         
-        # Add related records as entities and attributes
-        if context.related_records:
-            for record in context.related_records:
-                if isinstance(record, Entity):
-                    for line in assemble_entity(record).splitlines():
-                        lines.append(f"  {line}")
-                elif isinstance(record, Attribute):
-                    lines.append(f"  {assemble_attribute(record)}")
+        # If this node has an attribute, render it
+        elif tree.attribute:
+            result_lines.append(f"{indent}{assemble_attribute(tree.attribute)}")
         
-        lines.append("</context>")
-        return '\n'.join(lines)
+        # Recursively process children
+        for child in tree.children:
+            child_lines = assemble_tree(child, indent_level + 1)
+            result_lines.extend(child_lines)
+        
+        return result_lines
+    
+    # Assemble the tree structure
+    tree_lines = assemble_tree(context)
+    lines.extend(tree_lines)
+    
+    lines.append("</context>")
+    return '\n'.join(lines)
     
     return assemble

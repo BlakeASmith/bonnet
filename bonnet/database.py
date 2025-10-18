@@ -495,3 +495,105 @@ def search_knowledge_graph(query: str, include_related: bool = True, max_depth: 
         'search_results': search_results,
         'related_records': related_records
     }
+
+
+def get_graph_structure(query: str, include_related: bool = True, max_depth: int = 1) -> List[Dict]:
+    """Get the knowledge graph structure starting from search results."""
+    # First, search for matching nodes and edges
+    search_results = search_nodes(query)
+    
+    if not search_results:
+        return []
+    
+    # Build graph structure starting from search results
+    graph_nodes = []
+    processed_nodes = set()
+    
+    def build_node_tree(node_id: str, depth: int = 0) -> Dict:
+        if depth > max_depth or node_id in processed_nodes:
+            return None
+            
+        processed_nodes.add(node_id)
+        
+        # Get the node record
+        node_data = get_node_by_id(node_id)
+        if not node_data:
+            return None
+            
+        # Get the actual record (entity or attribute)
+        record_data = get_record_by_node(node_id)
+        if not record_data:
+            return None
+            
+        # Get edges from this node
+        edges = get_edges_from_node(node_id)
+        
+        # Build the node structure
+        node_structure = {
+            'node': node_data,
+            'record': record_data,
+            'edges': edges,
+            'children': []
+        }
+        
+        # Recursively build children if we should include related nodes
+        if include_related and depth < max_depth:
+            for edge in edges:
+                child_node_id = edge['to_node_id']
+                child_node = build_node_tree(child_node_id, depth + 1)
+                if child_node:
+                    node_structure['children'].append(child_node)
+        
+        return node_structure
+    
+    # Build tree for each search result
+    for result in search_results:
+        if result['source'] == 'node':
+            node_tree = build_node_tree(result['node_id'])
+            if node_tree:
+                graph_nodes.append(node_tree)
+        elif result['source'] == 'edge':
+            # For edges, start from both ends
+            from_tree = build_node_tree(result['from_node_id'])
+            to_tree = build_node_tree(result['to_node_id'])
+            if from_tree:
+                graph_nodes.append(from_tree)
+            if to_tree and to_tree != from_tree:
+                graph_nodes.append(to_tree)
+    
+    return graph_nodes
+
+
+def get_connection():
+    """Get a database connection."""
+    return sqlite3.connect(_db_path)
+
+def get_node_by_id(node_id: str) -> Optional[Dict]:
+    """Get a node by its ID."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM nodes WHERE id = ?", (node_id,))
+        row = cursor.fetchone()
+        if row:
+            return {
+                'id': row[0],
+                'table_name': row[1],
+                'record_id': row[2],
+                'searchable_content': row[3]
+            }
+        return None
+
+
+def get_edges_from_node(node_id: str) -> List[Dict]:
+    """Get all edges from a specific node."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM edges WHERE from_node_id = ?", (node_id,))
+        rows = cursor.fetchall()
+        return [{
+            'id': row[0],
+            'from_node_id': row[1],
+            'to_node_id': row[2],
+            'edge_type': row[3],
+            'searchable_content': row[4]
+        } for row in rows]
