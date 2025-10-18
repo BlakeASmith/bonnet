@@ -102,12 +102,13 @@ def init_database():
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_from_node ON edges(from_node_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_to_node ON edges(to_node_id)')
         
-        # Create FTS5 virtual tables
+        # Create FTS5 virtual tables with porter tokenizer for stemming
         cursor.execute('''
             CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(
                 searchable_content,
                 content='nodes',
-                content_rowid='rowid'
+                content_rowid='rowid',
+                tokenize='porter unicode61'
             )
         ''')
         
@@ -115,7 +116,8 @@ def init_database():
             CREATE VIRTUAL TABLE IF NOT EXISTS edges_fts USING fts5(
                 searchable_content,
                 content='edges',
-                content_rowid='rowid'
+                content_rowid='rowid',
+                tokenize='porter unicode61'
             )
         ''')
         

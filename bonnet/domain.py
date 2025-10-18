@@ -1,51 +1,15 @@
 """Domain layer that returns Pydantic models after database fetches."""
 
-from _models import Attribute, Entity, ContextTree, SearchResult, Node, Edge, build_model_from_record
+from ._models import ContextTree, Node, Edge, build_model_from_record
 from typing import Dict
-from _input_models import (
-    GetEntityContextInput,
+from ._input_models import (
     SearchInput,
     SearchEntitiesInput,
     StoreEntityInput,
     StoreAttributeInput,
     CreateEdgeInput,
 )
-import database
-
-
-def get_entity_context(input: GetEntityContextInput) -> ContextTree:
-    """
-    Get entity context from database and return as a ContextTree model.
-    
-    Args:
-        input: GetEntityContextInput containing e_id
-        
-    Returns:
-        ContextTree containing the entity and its attributes
-    """
-    context_data = database.get_entity_context(input.e_id)
-    
-    # Convert attributes from dicts to Attribute models
-    attributes = [
-        Attribute(
-            id=attr['id'],
-            type=attr['type'],
-            subject=attr['subject'],
-            detail=attr['detail']
-        )
-        for attr in context_data['attributes']
-    ]
-    
-    # Create Entity model
-    entity = Entity(
-        id=context_data['e_id'],
-        name=context_data['entity_name'],
-        attributes=attributes
-    )
-    
-    # Wrap in ContextTree
-    return ContextTree(entities=[entity])
-
+from . import database
 
 
 def search(input: SearchInput) -> ContextTree:

@@ -1,6 +1,6 @@
 from typing import Protocol, Union
 
-from _models import Entity, ContextTree, SearchResult, Attribute
+from .._models import Entity, ContextTree, SearchResult, Attribute
 from typing import List
 
 
@@ -53,8 +53,7 @@ def assemble(context: ContextTree) -> str:
         # Render based on the type
         if tree.type == 'entity' and tree.data:
             entity = tree.data
-            result_lines.append(f"{indent}<entity id=\"{entity.id}\">")
-            result_lines.append(f"{indent}  <name>{entity.name}</name>")
+            result_lines.append(f"{indent}<entity id=\"{entity.id}\" name=\"{entity.name}\">")
             
             # Add edges as relationships (attributes are found through graph traversal)
             if tree.edges:
