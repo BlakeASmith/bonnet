@@ -294,13 +294,16 @@ def search_nodes(query: str) -> List[Dict]:
     
     results = []
     
+    # Escape the query for FTS
+    escaped_query = f'"{query}"'
+    
     # Search nodes
     cursor.execute('''
         SELECT n.id, n.table_name, n.record_id, n.searchable_content
         FROM nodes n
         JOIN nodes_fts fts ON n.rowid = fts.rowid
         WHERE nodes_fts MATCH ?
-    ''', (query,))
+    ''', (escaped_query,))
     
     for row in cursor.fetchall():
         results.append({
@@ -317,7 +320,7 @@ def search_nodes(query: str) -> List[Dict]:
         FROM edges e
         JOIN edges_fts fts ON e.rowid = fts.rowid
         WHERE edges_fts MATCH ?
-    ''', (query,))
+    ''', (escaped_query,))
     
     for row in cursor.fetchall():
         results.append({
