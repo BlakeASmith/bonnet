@@ -21,7 +21,6 @@ class SearchKnowledgeGraphInput(BaseModel):
 class StoreEntityInput(BaseModel):
     e_id: str
     name: str
-    file_path: Optional[str] = None
 
 
 class StoreAttributeInput(BaseModel):
@@ -30,7 +29,6 @@ class StoreAttributeInput(BaseModel):
     attr_type: str
     subject: str
     detail: str
-    file_path: Optional[str] = None
 
 
 class CreateEdgeInput(BaseModel):

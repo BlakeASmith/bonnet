@@ -22,8 +22,6 @@ def xml_assembler() -> Assembler:
             attributes_by_type[tag_name].append(attr)
         
         lines = [f"<entity id=\"{entity.id}\">"]
-        if entity.file_path:
-            lines.append(f"  <file_path>{entity.file_path}</file_path>")
         
         for tag_name, attrs in attributes_by_type.items():
             for attr in attrs:

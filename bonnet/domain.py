@@ -30,8 +30,7 @@ def get_entity_context(input: GetEntityContextInput) -> ContextTree:
             id=attr['id'],
             type=attr['type'],
             subject=attr['subject'],
-            detail=attr['detail'],
-            file_path=attr.get('file_path')
+            detail=attr['detail']
         )
         for attr in context_data['attributes']
     ]
@@ -40,7 +39,6 @@ def get_entity_context(input: GetEntityContextInput) -> ContextTree:
     entity = Entity(
         id=context_data['e_id'],
         name=context_data['entity_name'],
-        file_path=context_data.get('entity_file_path'),
         attributes=attributes
     )
     
@@ -112,8 +110,7 @@ def search_knowledge_graph(input: SearchKnowledgeGraphInput) -> KnowledgeGraphSe
         if record_data['type'] == 'entity':
             entity = Entity(
                 id=record_data['id'],
-                name=record_data['name'],
-                file_path=record_data.get('file_path')
+                name=record_data['name']
             )
             related_records.append(entity)
         elif record_data['type'] == 'attribute':
@@ -121,8 +118,7 @@ def search_knowledge_graph(input: SearchKnowledgeGraphInput) -> KnowledgeGraphSe
                 id=record_data['id'],
                 type=record_data['attr_type'],
                 subject=record_data['subject'],
-                detail=record_data['detail'],
-                file_path=record_data.get('file_path')
+                detail=record_data['detail']
             )
             related_records.append(attribute)
     
@@ -137,15 +133,14 @@ def store_entity(input: StoreEntityInput) -> bool:
     Store a master ENTITY record.
     
     Args:
-        input: StoreEntityInput containing e_id, name, and file_path
+        input: StoreEntityInput containing e_id and name
         
     Returns:
         True if successful
     """
     return database.store_entity(
         input.e_id, 
-        input.name, 
-        input.file_path
+        input.name
     )
 
 
@@ -154,7 +149,7 @@ def store_attribute(input: StoreAttributeInput) -> bool:
     Store a linked attribute (fact, task, rule, ref).
     
     Args:
-        input: StoreAttributeInput containing attr_id, entity_id, attr_type, subject, detail, and file_path
+        input: StoreAttributeInput containing attr_id, entity_id, attr_type, subject, and detail
         
     Returns:
         True if successful
@@ -164,8 +159,7 @@ def store_attribute(input: StoreAttributeInput) -> bool:
         input.entity_id, 
         input.attr_type, 
         input.subject, 
-        input.detail,
-        input.file_path
+        input.detail
     )
 
 

@@ -8,13 +8,11 @@ class Attribute(BaseModel):
     type: str
     subject: str
     detail: str
-    file_path: Optional[str] = None
 
 
 class Entity(BaseModel):
     id: str
     name: str
-    file_path: Optional[str] = None
     attributes: List[Attribute] = Field(default_factory=list)
 
 

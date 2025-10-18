@@ -48,9 +48,7 @@ def init_database():
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entities (
                 id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                file_path TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                name TEXT NOT NULL
             )
         ''')
         
@@ -62,8 +60,6 @@ def init_database():
                 type TEXT NOT NULL,
                 subject TEXT,
                 detail TEXT,
-                file_path TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (entity_id) REFERENCES entities(id)
             )
         ''')
@@ -196,7 +192,7 @@ def create_node(table_name: str, record_id: str, record_data: dict) -> str:
     
     return node_id
 
-def store_entity(e_id: str, entity_name: str, file_path: str = None) -> bool:
+def store_entity(e_id: str, entity_name: str) -> bool:
     """Store a master ENTITY record."""
     conn = init_database()
     
@@ -208,9 +204,9 @@ def store_entity(e_id: str, entity_name: str, file_path: str = None) -> bool:
         
         # Insert entity record
         cursor.execute('''
-            INSERT INTO entities (id, name, file_path)
-            VALUES (?, ?, ?)
-        ''', (e_id, entity_name, file_path))
+            INSERT INTO entities (id, name)
+            VALUES (?, ?)
+        ''', (e_id, entity_name))
     
     # Create corresponding node outside the transaction
     entity_data = {
@@ -220,7 +216,7 @@ def store_entity(e_id: str, entity_name: str, file_path: str = None) -> bool:
     
     return True
 
-def store_attribute(attr_id: str, entity_id: str, attr_type: str, subject: str, detail: str, file_path: str = None) -> bool:
+def store_attribute(attr_id: str, entity_id: str, attr_type: str, subject: str, detail: str) -> bool:
     """Store a linked attribute (fact, task, rule, ref)."""
     conn = init_database()
     
@@ -232,9 +228,9 @@ def store_attribute(attr_id: str, entity_id: str, attr_type: str, subject: str, 
         
         # Insert attribute record
         cursor.execute('''
-            INSERT INTO attributes (id, entity_id, type, subject, detail, file_path)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (attr_id, entity_id, attr_type, subject, detail, file_path))
+            INSERT INTO attributes (id, entity_id, type, subject, detail)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (attr_id, entity_id, attr_type, subject, detail))
     
     # Create corresponding node outside the transaction
     attribute_data = {
@@ -389,7 +385,7 @@ def get_record_by_node(node_id: str) -> Dict:
     # Get record from appropriate table
     if table_name == 'entities':
         cursor.execute('''
-            SELECT id, name, file_path
+            SELECT id, name
             FROM entities WHERE id = ?
         ''', (record_id,))
         
@@ -398,13 +394,12 @@ def get_record_by_node(node_id: str) -> Dict:
             return {
                 'type': 'entity',
                 'id': row[0],
-                'name': row[1],
-                'file_path': row[2]
+                'name': row[1]
             }
     
     elif table_name == 'attributes':
         cursor.execute('''
-            SELECT id, entity_id, type, subject, detail, file_path
+            SELECT id, entity_id, type, subject, detail
             FROM attributes WHERE id = ?
         ''', (record_id,))
         
@@ -416,8 +411,7 @@ def get_record_by_node(node_id: str) -> Dict:
                 'entity_id': row[1],
                 'attr_type': row[2],
                 'subject': row[3],
-                'detail': row[4],
-                'file_path': row[5]
+                'detail': row[4]
             }
     
     conn.close()
@@ -431,7 +425,7 @@ def get_entity_context(e_id: str) -> Dict:
     
     # Get entity info
     cursor.execute('''
-        SELECT name, file_path FROM entities WHERE id = ?
+        SELECT name FROM entities WHERE id = ?
     ''', (e_id,))
     entity_row = cursor.fetchone()
     
@@ -439,11 +433,10 @@ def get_entity_context(e_id: str) -> Dict:
         raise ValueError(f"Entity ID {e_id} not found")
     
     entity_name = entity_row[0]
-    entity_file_path = entity_row[1]
     
     # Get all linked attributes
     cursor.execute('''
-        SELECT id, type, subject, detail, file_path FROM attributes 
+        SELECT id, type, subject, detail FROM attributes 
         WHERE entity_id = ?
         ORDER BY type, subject
     ''', (e_id,))
@@ -454,8 +447,7 @@ def get_entity_context(e_id: str) -> Dict:
             'id': row[0],
             'type': row[1],
             'subject': row[2],
-            'detail': row[3],
-            'file_path': row[4]
+            'detail': row[3]
         }
         attributes.append(attr)
     
@@ -464,7 +456,6 @@ def get_entity_context(e_id: str) -> Dict:
     return {
         'e_id': e_id,
         'entity_name': entity_name,
-        'entity_file_path': entity_file_path,
         'attributes': attributes
     }
 
