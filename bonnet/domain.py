@@ -1,7 +1,7 @@
 """Domain layer that returns Pydantic models after database fetches."""
 
-from _models import Attribute, Entity, ContextTree
-from _input_models import (
+from ._models import Attribute, Entity, ContextTree
+from ._input_models import (
     GetEntityContextInput,
     SearchEntitiesInput,
     StoreEntityInput,
