@@ -59,12 +59,3 @@ REF:Source:The hitchhikers guide to the galaxy
 </entity>
 </context>
 ```
-
-## Features
-
-- SQLite3 database with FTS5 full-text search
-- Entity-based knowledge organization
-- Support for custom attribute types (FACT, REF, etc.)
-- Disambiguation for multiple search results
-- XML context generation
-- Error handling and validation
