@@ -8,6 +8,12 @@ A Python CLI tool for managing structured knowledge base (memory) and preparing 
 pip install -e .
 ```
 
+## Dependencies
+
+- Python 3.7+
+- Click 8.0+
+- python-dateutil 2.8+
+
 ## Usage
 
 ### Store a topic (master ENTITY record)

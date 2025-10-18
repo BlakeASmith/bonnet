@@ -27,6 +27,7 @@ setup(
     ],
     python_requires=">=3.7",
     install_requires=[
+        "click>=8.0.0",
         "python-dateutil>=2.8.0",
     ],
     entry_points={

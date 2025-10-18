@@ -1,4 +1,4 @@
-from .cli import BonnetCLI
+from .cli import cli
 from .database import BonnetDB
 
 __version__ = "1.0.0"

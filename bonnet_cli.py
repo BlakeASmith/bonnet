@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-import sys
-from bonnet.cli import BonnetCLI
+from bonnet.cli import cli
 
 def main():
-    cli = BonnetCLI()
-    cli.run(sys.argv[1:])
+    cli()
 
 if __name__ == "__main__":
     main()
