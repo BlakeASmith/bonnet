@@ -36,3 +36,15 @@ class CreateEdgeInput(BaseModel):
 class SearchEntitiesInput(BaseModel):
     query: str
 
+
+class StoreFileInput(BaseModel):
+    file_id: str
+    file_path: str
+    description: Optional[str] = None
+
+
+class LinkFileInput(BaseModel):
+    file_id: str
+    entity_id: str
+    edge_type: str = "references"
+

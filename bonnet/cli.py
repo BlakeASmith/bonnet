@@ -7,6 +7,8 @@ from ._input_models import (
     StoreEntityInput,
     StoreAttributeInput,
     CreateEdgeInput,
+    StoreFileInput,
+    LinkFileInput,
 )
 from . import domain
 from ._utils._cli_utils import handle_errors
@@ -70,6 +72,28 @@ def link(from_entity, to_entity, edge_type, content):
     )
     edge_id = domain.create_edge(input_model)
     click.echo(f"Created edge {edge_id} from {from_entity} to {to_entity}")
+
+@cli.command()
+@click.option('--id', required=True, help='Unique File ID')
+@click.option('--description', help='File description')
+@click.argument('file_path')
+@handle_errors
+def file(id, description, file_path):
+    """Store a file reference"""
+    input_model = StoreFileInput(file_id=id, file_path=file_path, description=description)
+    domain.store_file(input_model)
+    click.echo(f"Stored file '{file_path}' with ID {id}")
+
+@cli.command()
+@click.option('--file', 'file_id', required=True, help='File ID to link')
+@click.option('--entity', 'entity_id', required=True, help='Entity ID to link to')
+@click.option('--type', 'edge_type', default='references', help='Edge type (default: references)')
+@handle_errors
+def link_file(file_id, entity_id, edge_type):
+    """Link a file to an entity"""
+    input_model = LinkFileInput(file_id=file_id, entity_id=entity_id, edge_type=edge_type)
+    edge_id = domain.link_file(input_model)
+    click.echo(f"Created edge {edge_id} linking file {file_id} to entity {entity_id}")
 
 @cli.command()
 @click.option('--about', required=True, help='Search query')

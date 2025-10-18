@@ -69,6 +69,18 @@ def init_database():
                 )
             ''')
             
+            # Create files table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS files (
+                    id TEXT PRIMARY KEY,
+                    file_path TEXT NOT NULL,
+                    description TEXT,
+                    node_id TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (node_id) REFERENCES nodes(id)
+                )
+            ''')
+            
             # Create nodes table for knowledge graph
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS nodes (
@@ -99,6 +111,8 @@ def init_database():
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_entities_node_id ON entities(node_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_type ON attributes(type)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_node_id ON attributes(node_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_files_path ON files(file_path)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_files_node_id ON files(node_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_nodes_table_record ON nodes(table_name, record_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_from_node ON edges(from_node_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_to_node ON edges(to_node_id)')
@@ -180,6 +194,14 @@ def build_attribute_searchable_content(record_data: dict) -> str:
         content_parts.append(record_data['subject'])
     if record_data.get('detail'):
         content_parts.append(record_data['detail'])
+    return ' '.join(content_parts)
+
+@searchable_builder('files')
+def build_file_searchable_content(record_data: dict) -> str:
+    """Build searchable content for a file node."""
+    content_parts = [record_data.get('file_path', '')]
+    if record_data.get('description'):
+        content_parts.append(record_data['description'])
     return ' '.join(content_parts)
 
 def create_node(table_name: str, record_id: str, record_data: dict) -> str:
@@ -437,6 +459,22 @@ def get_record_by_node(node_id: str) -> Dict:
                 'node_id': row[4]
             }
     
+    elif table_name == 'files':
+        cursor.execute('''
+            SELECT id, file_path, description, node_id
+            FROM files WHERE id = ?
+        ''', (record_id,))
+        
+        row = cursor.fetchone()
+        if row:
+            return {
+                'type': 'file',
+                'id': row[0],
+                'file_path': row[1],
+                'description': row[2],
+                'node_id': row[3]
+            }
+    
     conn.close()
     return None
 
@@ -628,5 +666,61 @@ def get_entity_node_id(entity_id: str) -> str:
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT node_id FROM entities WHERE id = ?", (entity_id,))
+        row = cursor.fetchone()
+        return row[0] if row else None
+
+def store_file(file_id: str, file_path: str, description: str = None) -> bool:
+    """Store a file record."""
+    init_database()
+    
+    # First create the node
+    file_data = {
+        'file_path': file_path,
+        'description': description or ''
+    }
+    node_id = create_node('files', file_id, file_data)
+    
+    with transaction() as cursor:
+        # Check if file already exists
+        cursor.execute("SELECT id FROM files WHERE id = ?", (file_id,))
+        if cursor.fetchone():
+            raise ValueError(f"File ID {file_id} already exists")
+        
+        # Insert file record with node_id
+        cursor.execute('''
+            INSERT INTO files (id, file_path, description, node_id)
+            VALUES (?, ?, ?, ?)
+        ''', (file_id, file_path, description, node_id))
+    
+    return True
+
+def link_file_to_entity(file_id: str, entity_id: str, edge_type: str = "references") -> str:
+    """Link a file to an entity."""
+    init_database()
+    
+    # Get file node ID
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT node_id FROM files WHERE id = ?", (file_id,))
+        file_row = cursor.fetchone()
+        if not file_row:
+            raise ValueError(f"File ID {file_id} not found")
+        file_node_id = file_row[0]
+    
+    # Get entity node ID
+    entity_node_id = get_entity_node_id(entity_id)
+    if not entity_node_id:
+        raise ValueError(f"Entity ID {entity_id} not found")
+    
+    # Create edge between file and entity
+    edge_id = create_edge(file_node_id, entity_node_id, edge_type, f"file {file_id} references entity {entity_id}")
+    
+    return edge_id
+
+def get_file_node_id(file_id: str) -> str:
+    """Get the node ID for a file."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT node_id FROM files WHERE id = ?", (file_id,))
         row = cursor.fetchone()
         return row[0] if row else None

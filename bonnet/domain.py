@@ -8,6 +8,8 @@ from ._input_models import (
     StoreEntityInput,
     StoreAttributeInput,
     CreateEdgeInput,
+    StoreFileInput,
+    LinkFileInput,
 )
 from . import database
 
@@ -43,7 +45,7 @@ def search(input: SearchInput) -> ContextTree:
         data = None
         node_type = 'root'
         
-        if node_data['record']['type'] in ['entity', 'attribute']:
+        if node_data['record']['type'] in ['entity', 'attribute', 'file']:
             data = build_model_from_record(node_data['record'])
             node_type = node_data['record']['type']
         
@@ -181,4 +183,51 @@ def get_entity_node_id(entity_id: str) -> str:
         The node ID if found, None otherwise
     """
     return database.get_entity_node_id(entity_id)
+
+
+def store_file(input: StoreFileInput) -> bool:
+    """
+    Store a file record.
+    
+    Args:
+        input: StoreFileInput containing file_id, file_path, and description
+        
+    Returns:
+        True if successful
+    """
+    return database.store_file(
+        input.file_id,
+        input.file_path,
+        input.description
+    )
+
+
+def link_file(input: LinkFileInput) -> str:
+    """
+    Link a file to an entity.
+    
+    Args:
+        input: LinkFileInput containing file_id, entity_id, and edge_type
+        
+    Returns:
+        Edge ID if successful
+    """
+    return database.link_file_to_entity(
+        input.file_id,
+        input.entity_id,
+        input.edge_type
+    )
+
+
+def get_file_node_id(file_id: str) -> str:
+    """
+    Get the node ID for a file.
+    
+    Args:
+        file_id: The file ID
+        
+    Returns:
+        The node ID if found, None otherwise
+    """
+    return database.get_file_node_id(file_id)
 

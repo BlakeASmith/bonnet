@@ -15,6 +15,12 @@ class Entity(BaseModel):
     name: str
 
 
+class File(BaseModel):
+    id: str
+    file_path: str
+    description: str
+
+
 class Node(BaseModel):
     id: str
     table_name: str
@@ -45,8 +51,8 @@ class SearchResult(BaseModel):
 
 class ContextTree(BaseModel):
     """Represents a node in the knowledge graph with its data and relationships."""
-    type: str  # 'entity', 'attribute', or 'root'
-    data: Union[Entity, Attribute, None]  # None for root nodes
+    type: str  # 'entity', 'attribute', 'file', or 'root'
+    data: Union[Entity, Attribute, File, None]  # None for root nodes
     node: Node
     children: List["ContextTree"] = Field(default_factory=list)
     edges: List[Edge] = Field(default_factory=list)
@@ -84,7 +90,17 @@ def build_attribute_model(record_data: Dict[str, Any]) -> Attribute:
     )
 
 
-def build_model_from_record(record_data: Dict[str, Any]) -> Union[Entity, Attribute]:
+@model_builder('file')
+def build_file_model(record_data: Dict[str, Any]) -> File:
+    """Build a File model from database record data."""
+    return File(
+        id=record_data['id'],
+        file_path=record_data['file_path'],
+        description=record_data['description']
+    )
+
+
+def build_model_from_record(record_data: Dict[str, Any]) -> Union[Entity, Attribute, File]:
     """Build the appropriate Pydantic model from a database record using the registry."""
     record_type = record_data.get('type')
     if record_type not in MODEL_BUILDERS:
