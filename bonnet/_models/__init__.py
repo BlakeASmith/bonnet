@@ -46,9 +46,9 @@ class SearchResult(BaseModel):
 
 class ContextTree(BaseModel):
     """Represents a node in the knowledge graph with its data and relationships."""
-    node: Optional[Node] = None
-    entity: Optional[Entity] = None
-    attribute: Optional[Attribute] = None
+    type: str  # 'entity', 'attribute', or 'root'
+    data: Union[Entity, Attribute, None]  # None for root nodes
+    node: Node
     children: List["ContextTree"] = Field(default_factory=list)
     edges: List[Edge] = Field(default_factory=list)
 

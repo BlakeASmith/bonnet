@@ -50,14 +50,15 @@ def assemble(context: ContextTree) -> str:
         result_lines = []
         indent = "  " * indent_level
         
-        # If this node has an entity, render it
-        if tree.entity:
-            result_lines.append(f"{indent}<entity id=\"{tree.entity.id}\">")
-            result_lines.append(f"{indent}  <name>{tree.entity.name}</name>")
+        # Render based on the type
+        if tree.type == 'entity' and tree.data:
+            entity = tree.data
+            result_lines.append(f"{indent}<entity id=\"{entity.id}\">")
+            result_lines.append(f"{indent}  <name>{entity.name}</name>")
             
             # Add attributes if any
-            if tree.entity.attributes:
-                for attr in tree.entity.attributes:
+            if entity.attributes:
+                for attr in entity.attributes:
                     result_lines.append(f"{indent}  {assemble_attribute(attr)}")
             
             # Add edges as relationships
@@ -70,9 +71,9 @@ def assemble(context: ContextTree) -> str:
             
             result_lines.append(f"{indent}</entity>")
         
-        # If this node has an attribute, render it
-        elif tree.attribute:
-            result_lines.append(f"{indent}{assemble_attribute(tree.attribute)}")
+        elif tree.type == 'attribute' and tree.data:
+            attribute = tree.data
+            result_lines.append(f"{indent}{assemble_attribute(attribute)}")
         
         # Recursively process children
         for child in tree.children:

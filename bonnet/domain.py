@@ -74,21 +74,24 @@ def search(input: SearchInput) -> ContextTree:
             searchable_content=node_data['node']['searchable_content']
         )
         
-        # Create the record model (entity or attribute)
-        entity = None
-        attribute = None
+        # Create the record model (entity or attribute) and determine type
+        data = None
+        node_type = 'root'
+        
         if node_data['record']['type'] == 'entity':
-            entity = Entity(
+            data = Entity(
                 id=node_data['record']['id'],
                 name=node_data['record']['name']
             )
+            node_type = 'entity'
         elif node_data['record']['type'] == 'attribute':
-            attribute = Attribute(
+            data = Attribute(
                 id=node_data['record']['id'],
                 type=node_data['record']['attr_type'],
                 subject=node_data['record']['subject'],
                 detail=node_data['record']['detail']
             )
+            node_type = 'attribute'
         
         # Create edge models
         edges = []
@@ -109,16 +112,23 @@ def search(input: SearchInput) -> ContextTree:
             children.append(child_tree)
         
         return ContextTree(
+            type=node_type,
+            data=data,
             node=node,
-            entity=entity,
-            attribute=attribute,
             children=children,
             edges=edges
         )
     
     # Build the root context tree
     if not graph_structure:
-        return ContextTree()
+        # Create an empty root node
+        return ContextTree(
+            type='root',
+            data=None,
+            node=Node(id='', table_name='', record_id='', searchable_content=''),
+            children=[],
+            edges=[]
+        )
     
     # If multiple root nodes, create a wrapper tree
     if len(graph_structure) == 1:
@@ -130,7 +140,13 @@ def search(input: SearchInput) -> ContextTree:
             child_tree = build_context_tree(node_data)
             children.append(child_tree)
         
-        return ContextTree(children=children)
+        return ContextTree(
+            type='root',
+            data=None,
+            node=Node(id='', table_name='', record_id='', searchable_content=''),
+            children=children,
+            edges=[]
+        )
 
 
 def store_entity(input: StoreEntityInput) -> bool:
