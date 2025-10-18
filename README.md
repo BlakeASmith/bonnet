@@ -20,12 +20,6 @@ bonnet topic "The Meaning of Life" --id M1
 # Store a fact
 bonnet fact "Answer=42" --about M1
 
-# Store a task (requires date)
-bonnet task "Complete project" --about M1 --date 2025-10-15
-
-# Store a rule
-bonnet rule "Always be kind" --about M1
-
 # Store a reference
 bonnet ref "The hitchhikers guide to the galaxy" --about M1 --id R1
 ```
@@ -48,8 +42,6 @@ The context command generates XML output in the following format:
 M1:"The Meaning of Life"
 Fact:M1:Answer=42
 Ref:M1:The hitchhikers guide to the galaxy (ID: R1)
-Rule:M1:rule=Always be kind
-Task:M1:task=Complete project (due: 2025-10-15)
 </context>
 ```
 
@@ -57,7 +49,7 @@ Task:M1:task=Complete project (due: 2025-10-15)
 
 - SQLite3 database with FTS5 full-text search
 - Entity-based knowledge organization
-- Support for facts, tasks, rules, and references
+- Support for facts and references
 - Disambiguation for multiple search results
 - Compressed XML context generation
 - Error handling and validation

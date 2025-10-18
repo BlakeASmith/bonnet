@@ -1,7 +1,6 @@
 import argparse
 import sys
 from typing import List, Dict
-from dateutil.parser import parse as parse_date
 from .database import BonnetDB
 
 class BonnetCLI:
@@ -35,44 +34,6 @@ class BonnetCLI:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
     
-    def store_task(self, e_id: str, task_text: str, date: str) -> None:
-        """Store a TASK attribute."""
-        try:
-            # Validate date format
-            parse_date(date)
-            
-            # Parse task as "subject=detail" format
-            if '=' in task_text:
-                subject, detail = task_text.split('=', 1)
-                subject = subject.strip()
-                detail = detail.strip()
-            else:
-                subject = "task"
-                detail = task_text
-            
-            self.db.store_attribute(e_id, 'TASK', subject, detail, date)
-            print(f"Stored task '{subject}={detail}' for entity {e_id} with date {date}")
-        except ValueError as e:
-            print(f"Error: {e}", file=sys.stderr)
-            sys.exit(1)
-    
-    def store_rule(self, e_id: str, rule_text: str) -> None:
-        """Store a RULE attribute."""
-        try:
-            # Parse rule as "subject=detail" format
-            if '=' in rule_text:
-                subject, detail = rule_text.split('=', 1)
-                subject = subject.strip()
-                detail = detail.strip()
-            else:
-                subject = "rule"
-                detail = rule_text
-            
-            self.db.store_attribute(e_id, 'RULE', subject, detail)
-            print(f"Stored rule '{subject}={detail}' for entity {e_id}")
-        except ValueError as e:
-            print(f"Error: {e}", file=sys.stderr)
-            sys.exit(1)
     
     def store_ref(self, e_id: str, ref_text: str, ref_id: str) -> None:
         """Store a REF attribute."""
@@ -135,10 +96,6 @@ class BonnetCLI:
             for attr in context['attributes']:
                 if attr['type'] == 'FACT':
                     print(f"Fact:{context['e_id']}:{attr['subject']}={attr['detail']}")
-                elif attr['type'] == 'TASK':
-                    print(f"Task:{context['e_id']}:{attr['subject']}={attr['detail']} (due: {attr['date']})")
-                elif attr['type'] == 'RULE':
-                    print(f"Rule:{context['e_id']}:{attr['subject']}={attr['detail']}")
                 elif attr['type'] == 'REF':
                     print(f"Ref:{context['e_id']}:{attr['subject']} (ID: {attr['detail']})")
             
@@ -162,16 +119,6 @@ class BonnetCLI:
         fact_parser.add_argument('--about', required=True, help='Entity ID to link to')
         fact_parser.add_argument('text', help='Fact text (format: subject=detail)')
         
-        # Task command
-        task_parser = subparsers.add_parser('task', help='Store a TASK attribute')
-        task_parser.add_argument('--about', required=True, help='Entity ID to link to')
-        task_parser.add_argument('--date', required=True, help='Due date (YYYY-MM-DD)')
-        task_parser.add_argument('text', help='Task text (format: subject=detail)')
-        
-        # Rule command
-        rule_parser = subparsers.add_parser('rule', help='Store a RULE attribute')
-        rule_parser.add_argument('--about', required=True, help='Entity ID to link to')
-        rule_parser.add_argument('text', help='Rule text (format: subject=detail)')
         
         # Ref command
         ref_parser = subparsers.add_parser('ref', help='Store a REF attribute')
@@ -195,10 +142,6 @@ class BonnetCLI:
             self.store_topic(parsed_args.id, parsed_args.text)
         elif parsed_args.command == 'fact':
             self.store_fact(parsed_args.about, parsed_args.text)
-        elif parsed_args.command == 'task':
-            self.store_task(parsed_args.about, parsed_args.text, parsed_args.date)
-        elif parsed_args.command == 'rule':
-            self.store_rule(parsed_args.about, parsed_args.text)
         elif parsed_args.command == 'ref':
             self.store_ref(parsed_args.about, parsed_args.text, parsed_args.id)
         elif parsed_args.command == 'context':
