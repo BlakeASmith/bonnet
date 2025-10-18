@@ -32,3 +32,7 @@ class CreateEdgeInput(BaseModel):
     edge_type: str
     searchable_content: Optional[str] = None
 
+
+class SearchEntitiesInput(BaseModel):
+    query: str
+

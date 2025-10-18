@@ -5,6 +5,7 @@ from typing import Dict
 from _input_models import (
     GetEntityContextInput,
     SearchInput,
+    SearchEntitiesInput,
     StoreEntityInput,
     StoreAttributeInput,
     CreateEdgeInput,
@@ -188,4 +189,19 @@ def create_edge(input: CreateEdgeInput) -> str:
         input.edge_type,
         input.searchable_content or ""
     )
+
+
+def search_entities(input: SearchEntitiesInput) -> ContextTree:
+    """
+    Search for entities using the knowledge graph.
+    
+    Args:
+        input: SearchEntitiesInput containing query
+        
+    Returns:
+        ContextTree containing matching entities and their context
+    """
+    # Use the existing search function with default parameters
+    search_input = SearchInput(query=input.query, include_related=True, max_depth=1)
+    return search(search_input)
 

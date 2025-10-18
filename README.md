@@ -1,6 +1,6 @@
 # Bonnet CLI
 
-A Python CLI tool for managing structured knowledge base (memory) and preparing highly compressed XML context.
+A Python CLI tool for managing structured knowledge base (memory) and preparing highly compressed XML context using a knowledge graph architecture.
 
 ## Installation
 
@@ -17,15 +17,15 @@ The CLI can be run in two ways:
 ## Dependencies
 
 - Python 3.7+
-- Click 8.0+
-- python-dateutil 2.8+
-- pydantic 2.0+
+- Click 8.0.0+
+- python-dateutil 2.8.0+
+- pydantic 2.0.0+
 
 ## Usage Examples
 
 ### Store a topic (master ENTITY record)
 ```bash
-bonnet topic "The Meaning of Life" --id M1
+bonnet topic --id M1 "The Meaning of Life"
 ```
 
 ### Store attributes
@@ -52,10 +52,23 @@ The context command generates XML output in the following format:
 
 ```xml
 <context>
-<entity>
-M1:The Meaning of Life
-FACT:Answer:42
-REF:Source:The hitchhikers guide to the galaxy
-</entity>
+  <entity id="M1">
+    <name>The Meaning of Life</name>
+    <relationship type="has_attribute" to="A1">
+      <content>FACT:Answer:42</content>
+    </relationship>
+    <relationship type="has_attribute" to="A2">
+      <content>REF:Source:The hitchhikers guide to the galaxy</content>
+    </relationship>
+  </entity>
 </context>
 ```
+
+## Architecture
+
+Bonnet uses a knowledge graph architecture with:
+- **Entities**: Master records representing topics or concepts
+- **Attributes**: Facts, references, tasks, or rules linked to entities
+- **Nodes**: Graph nodes representing both entities and attributes
+- **Edges**: Relationships between nodes in the knowledge graph
+- **FTS Search**: Full-text search across the knowledge base using SQLite FTS5
