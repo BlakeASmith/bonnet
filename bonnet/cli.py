@@ -9,6 +9,7 @@ from ._input_models import (
     CreateEdgeInput,
     StoreFileInput,
     LinkFileInput,
+    LinkNodesInput,
 )
 from . import domain
 from ._utils._cli_utils import handle_errors
@@ -94,6 +95,27 @@ def link_file(file_id, entity_id, edge_type):
     input_model = LinkFileInput(file_id=file_id, entity_id=entity_id, edge_type=edge_type)
     edge_id = domain.link_file(input_model)
     click.echo(f"Created edge {edge_id} linking file {file_id} to entity {entity_id}")
+
+@cli.command()
+@click.option('--from-table', required=True, help='Source table name (entities, files, attributes)')
+@click.option('--from-id', required=True, help='Source record ID')
+@click.option('--to-table', required=True, help='Target table name (entities, files, attributes)')
+@click.option('--to-id', required=True, help='Target record ID')
+@click.option('--type', 'edge_type', default='references', help='Edge type (default: references)')
+@click.option('--content', help='Edge content description')
+@handle_errors
+def link_nodes_cmd(from_table, from_id, to_table, to_id, edge_type, content):
+    """Link any node type to any other node type"""
+    input_model = LinkNodesInput(
+        from_table=from_table,
+        from_record_id=from_id,
+        to_table=to_table,
+        to_record_id=to_id,
+        edge_type=edge_type,
+        searchable_content=content
+    )
+    edge_id = domain.link_nodes(input_model)
+    click.echo(f"Created edge {edge_id} linking {from_table}:{from_id} to {to_table}:{to_id}")
 
 @cli.command()
 @click.option('--about', required=True, help='Search query')

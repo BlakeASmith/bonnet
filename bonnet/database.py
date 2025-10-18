@@ -697,28 +697,40 @@ def store_file(file_id: str, file_path: str, description: str = None) -> bool:
     
     return True
 
-def link_file_to_entity(file_id: str, entity_id: str, edge_type: str = "references") -> str:
-    """Link a file to an entity."""
-    init_database()
-    
-    # Get file node ID
+def get_node_id_by_record_id(table_name: str, record_id: str) -> str:
+    """Get the node ID for any record by table name and record ID."""
     with get_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT node_id FROM files WHERE id = ?", (file_id,))
-        file_row = cursor.fetchone()
-        if not file_row:
-            raise ValueError(f"File ID {file_id} not found")
-        file_node_id = file_row[0]
+        cursor.execute(f"SELECT node_id FROM {table_name} WHERE id = ?", (record_id,))
+        row = cursor.fetchone()
+        return row[0] if row else None
+
+def link_nodes(from_table: str, from_record_id: str, to_table: str, to_record_id: str, edge_type: str = "references", searchable_content: str = None) -> str:
+    """Link any node type to any other node type."""
+    init_database()
     
-    # Get entity node ID
-    entity_node_id = get_entity_node_id(entity_id)
-    if not entity_node_id:
-        raise ValueError(f"Entity ID {entity_id} not found")
+    # Get source node ID
+    from_node_id = get_node_id_by_record_id(from_table, from_record_id)
+    if not from_node_id:
+        raise ValueError(f"Record {from_record_id} not found in table {from_table}")
     
-    # Create edge between file and entity
-    edge_id = create_edge(file_node_id, entity_node_id, edge_type, f"file {file_id} references entity {entity_id}")
+    # Get target node ID
+    to_node_id = get_node_id_by_record_id(to_table, to_record_id)
+    if not to_node_id:
+        raise ValueError(f"Record {to_record_id} not found in table {to_table}")
+    
+    # Create searchable content if not provided
+    if not searchable_content:
+        searchable_content = f"{from_table} {from_record_id} {edge_type} {to_table} {to_record_id}"
+    
+    # Create edge between nodes
+    edge_id = create_edge(from_node_id, to_node_id, edge_type, searchable_content)
     
     return edge_id
+
+def link_file_to_entity(file_id: str, entity_id: str, edge_type: str = "references") -> str:
+    """Link a file to an entity (legacy function for backward compatibility)."""
+    return link_nodes("files", file_id, "entities", entity_id, edge_type)
 
 def get_file_node_id(file_id: str) -> str:
     """Get the node ID for a file."""

@@ -10,6 +10,7 @@ from ._input_models import (
     CreateEdgeInput,
     StoreFileInput,
     LinkFileInput,
+    LinkNodesInput,
 )
 from . import database
 
@@ -230,4 +231,24 @@ def get_file_node_id(file_id: str) -> str:
         The node ID if found, None otherwise
     """
     return database.get_file_node_id(file_id)
+
+
+def link_nodes(input: LinkNodesInput) -> str:
+    """
+    Link any node type to any other node type.
+    
+    Args:
+        input: LinkNodesInput containing table names, record IDs, edge type, and content
+        
+    Returns:
+        Edge ID if successful
+    """
+    return database.link_nodes(
+        input.from_table,
+        input.from_record_id,
+        input.to_table,
+        input.to_record_id,
+        input.edge_type,
+        input.searchable_content
+    )
 

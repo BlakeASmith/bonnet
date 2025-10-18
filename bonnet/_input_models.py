@@ -48,3 +48,12 @@ class LinkFileInput(BaseModel):
     entity_id: str
     edge_type: str = "references"
 
+
+class LinkNodesInput(BaseModel):
+    from_table: str
+    from_record_id: str
+    to_table: str
+    to_record_id: str
+    edge_type: str = "references"
+    searchable_content: Optional[str] = None
+
