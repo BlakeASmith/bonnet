@@ -231,6 +231,29 @@ def entity_exists(e_id: str) -> bool:
         cursor.execute("SELECT id FROM entities WHERE id = ?", (e_id,))
         return cursor.fetchone() is not None
 
+def get_max_topic_number() -> int:
+    """Get the highest topic number currently in use."""
+    init_database()
+    
+    with transaction() as cursor:
+        # Find all topic IDs that start with 'T' followed by a number
+        cursor.execute("SELECT id FROM entities WHERE id LIKE 'T%'")
+        rows = cursor.fetchall()
+        
+        max_number = 0
+        for row in rows:
+            topic_id = row[0]
+            # Extract number from T1, T2, etc.
+            if topic_id.startswith('T') and len(topic_id) > 1:
+                try:
+                    number = int(topic_id[1:])
+                    max_number = max(max_number, number)
+                except ValueError:
+                    # Skip if not a valid number
+                    continue
+        
+        return max_number
+
 def store_attribute(attr_id: str, attr_type: str, subject: str, detail: str) -> bool:
     """Store an attribute (fact, task, rule, ref) and link it to the entity."""
     init_database()

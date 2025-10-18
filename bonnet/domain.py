@@ -1,7 +1,5 @@
 """Domain layer that returns Pydantic models after database fetches."""
 
-import uuid
-import re
 from ._models import ContextTree, Node, Edge, build_model_from_record
 from typing import Dict
 from ._input_models import (
@@ -14,41 +12,17 @@ from ._input_models import (
 from . import database
 
 
-def generate_readable_id(topic_name: str) -> str:
+def generate_topic_id() -> str:
     """
-    Generate a human-readable ID from a topic name.
+    Generate a simple topic ID with prefix and number.
     
-    Args:
-        topic_name: The name of the topic
-        
     Returns:
-        A human-readable ID (e.g., "meaning-life", "quick-fox")
+        A simple ID like "T1", "T2", "T3", etc.
     """
-    # Take first 2-3 words, convert to lowercase, remove special chars
-    words = re.findall(r'\b\w+\b', topic_name.lower())[:2]
-    
-    if not words:
-        # Fallback if no words found
-        return f"topic-{uuid.uuid4().hex[:4]}"
-    
-    # Join words with hyphens, limit total length
-    base_id = '-'.join(words)
-    base_id = base_id[:15]  # Keep it reasonably short
-    
-    # Check if this ID already exists and add number if needed
-    counter = 1
-    proposed_id = base_id
-    
-    while database.entity_exists(proposed_id):
-        proposed_id = f"{base_id}-{counter}"
-        counter += 1
-        
-        # Prevent infinite loop with a reasonable limit
-        if counter > 999:
-            proposed_id = f"{base_id}-{uuid.uuid4().hex[:4]}"
-            break
-    
-    return proposed_id
+    # Find the highest existing topic number
+    max_number = database.get_max_topic_number()
+    next_number = max_number + 1
+    return f"T{next_number}"
 
 
 def search(input: SearchInput) -> ContextTree:
@@ -152,8 +126,8 @@ def store_entity(input: StoreEntityInput) -> str:
     Returns:
         The entity ID used (either provided or generated)
     """
-    # Generate human-readable ID if not provided
-    e_id = input.e_id if input.e_id is not None else generate_readable_id(input.name)
+    # Generate simple topic ID if not provided
+    e_id = input.e_id if input.e_id is not None else generate_topic_id()
     
     database.store_entity(e_id, input.name)
     return e_id

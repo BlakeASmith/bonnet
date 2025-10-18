@@ -1,5 +1,5 @@
 bonnet topic "The Meaning of Life" -t thought,question --id M1
-bonnet topic "Another topic"  # ID will be auto-generated as "another-topic"
+bonnet topic "Another topic"  # ID will be auto-generated as T1
 
 bonnet fact "Answer=42" --about M1
 

@@ -28,9 +28,9 @@ The CLI can be run in two ways:
 # With explicit ID
 bonnet topic --id M1 "The Meaning of Life"
 
-# With auto-generated human-readable ID
-bonnet topic "The Meaning of Life"  # Creates ID: the-meaning
-bonnet topic "Machine Learning"     # Creates ID: machine-learnin
+# With auto-generated simple ID
+bonnet topic "The Meaning of Life"  # Creates ID: T1
+bonnet topic "Machine Learning"     # Creates ID: T2
 ```
 
 ### Store attributes
