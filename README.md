@@ -19,8 +19,9 @@ The CLI can be run in two ways:
 - Python 3.7+
 - Click 8.0+
 - python-dateutil 2.8+
+- pydantic 2.0+
 
-## Usage
+## Usage Examples
 
 ### Store a topic (master ENTITY record)
 ```bash
@@ -30,10 +31,10 @@ bonnet topic "The Meaning of Life" --id M1
 ### Store attributes
 ```bash
 # Store a fact
-bonnet fact "Answer=42" --about M1
+bonnet attr --about M1 --type FACT --subject "Answer" "42"
 
 # Store a reference
-bonnet ref "The hitchhikers guide to the galaxy" --about M1 --id R1
+bonnet attr --about M1 --type REF --subject "Source" "The hitchhikers guide to the galaxy"
 ```
 
 ### Search and generate context
@@ -51,9 +52,11 @@ The context command generates XML output in the following format:
 
 ```xml
 <context>
-M1:"The Meaning of Life"
-Fact:M1:Answer=42
-Ref:M1:The hitchhikers guide to the galaxy (ID: R1)
+<entity>
+M1:The Meaning of Life
+FACT:Answer:42
+REF:Source:The hitchhikers guide to the galaxy
+</entity>
 </context>
 ```
 
@@ -61,8 +64,7 @@ Ref:M1:The hitchhikers guide to the galaxy (ID: R1)
 
 - SQLite3 database with FTS5 full-text search
 - Entity-based knowledge organization
-- Support for facts and references
-- Simplified data model (no task/rule types)
+- Support for custom attribute types (FACT, REF, etc.)
 - Disambiguation for multiple search results
-- Compressed XML context generation
+- XML context generation
 - Error handling and validation
