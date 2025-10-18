@@ -21,10 +21,11 @@ def xml_assembler() -> Assembler:
                 attributes_by_type[tag_name] = []
             attributes_by_type[tag_name].append(attr)
         
-        lines = []
+        lines = [f"<entity id=\"{entity.e_id}\">"]
         for tag_name, attrs in attributes_by_type.items():
             for attr in attrs:
-                lines.append(f"<{tag_name} id=\"{entity.e_id}\">{attr.subject}:{attr.detail}</{tag_name}>")
+                lines.append(f"  <{tag_name}>{attr.subject}:{attr.detail}</{tag_name}>")
+        lines.append("</entity>")
         
         return '\n'.join(lines)
     
