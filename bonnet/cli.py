@@ -18,10 +18,7 @@ def handle_errors(func):
     return wrapper
 
 def parse_fact_text(text):
-    """Parse fact text as 'subject=detail' format"""
-    if '=' in text:
-        subject, detail = text.split('=', 1)
-        return subject.strip(), detail.strip()
+    """Parse fact text as single detail field"""
     return "fact", text
 
 def display_context(context_data):
@@ -31,7 +28,7 @@ def display_context(context_data):
     
     for attr in context_data['attributes']:
         if attr['type'] == 'FACT':
-            click.echo(f"Fact:{context_data['e_id']}:{attr['subject']}={attr['detail']}")
+            click.echo(f"Fact:{context_data['e_id']}:{attr['detail']}")
         elif attr['type'] == 'REF':
             click.echo(f"Ref:{context_data['e_id']}:{attr['subject']} (ID: {attr['detail']})")
     
@@ -86,7 +83,7 @@ def fact(about, text):
     """Store a FACT attribute"""
     subject, detail = parse_fact_text(text)
     database.store_attribute(about, 'FACT', subject, detail)
-    click.echo(f"Stored fact '{subject}={detail}' for entity {about}")
+    click.echo(f"Stored fact '{detail}' for entity {about}")
 
 @cli.command()
 @click.option('--about', required=True, help='Entity ID to link to')
