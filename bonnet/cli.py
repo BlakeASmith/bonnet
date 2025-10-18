@@ -6,6 +6,7 @@ from ._input_models import (
     SearchEntitiesInput,
     StoreEntityInput,
     StoreAttributeInput,
+    CreateEdgeInput,
 )
 from . import domain
 from ._utils._cli_utils import handle_errors
@@ -44,6 +45,31 @@ def attr(about, attr_type, subject, detail):
     input_model = StoreAttributeInput(attr_id=about, attr_type=attr_type, subject=subject, detail=detail)
     domain.store_attribute(input_model)
     click.echo(f"Stored {attr_type} attribute for entity {about}")
+
+@cli.command()
+@click.option('--from', 'from_entity', required=True, help='Source entity ID')
+@click.option('--to', 'to_entity', required=True, help='Target entity ID')
+@click.option('--type', 'edge_type', required=True, help='Edge type')
+@click.option('--content', help='Edge content')
+@handle_errors
+def link(from_entity, to_entity, edge_type, content):
+    """Create a link between two entities"""
+    # Get node IDs for the entities
+    from_node_id = domain.get_entity_node_id(from_entity)
+    to_node_id = domain.get_entity_node_id(to_entity)
+    
+    if not from_node_id or not to_node_id:
+        click.echo("One or both entities not found")
+        return
+    
+    input_model = CreateEdgeInput(
+        from_node_id=from_node_id,
+        to_node_id=to_node_id,
+        edge_type=edge_type,
+        searchable_content=content
+    )
+    edge_id = domain.create_edge(input_model)
+    click.echo(f"Created edge {edge_id} from {from_entity} to {to_entity}")
 
 @cli.command()
 @click.option('--about', required=True, help='Search query')

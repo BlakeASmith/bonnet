@@ -47,7 +47,7 @@ def search(input: SearchInput) -> ContextTree:
             data = build_model_from_record(node_data['record'])
             node_type = node_data['record']['type']
         
-        # Create edge models
+        # Create edge models (for reference, but we'll follow them to get actual nodes)
         edges = []
         for edge_data in node_data['edges']:
             edge = Edge(
@@ -59,7 +59,7 @@ def search(input: SearchInput) -> ContextTree:
             )
             edges.append(edge)
         
-        # Recursively build children
+        # Recursively build children (these are the actual connected nodes via edges)
         children = []
         for child_data in node_data['children']:
             child_tree = build_context_tree(child_data)
@@ -121,7 +121,7 @@ def store_entity(input: StoreEntityInput) -> bool:
 
 def store_attribute(input: StoreAttributeInput) -> bool:
     """
-    Store an attribute (fact, task, rule, ref).
+    Store an attribute (fact, task, rule, ref) and automatically link it to the entity.
     
     Args:
         input: StoreAttributeInput containing attr_id, attr_type, subject, and detail
@@ -168,4 +168,17 @@ def search_entities(input: SearchEntitiesInput) -> ContextTree:
     # Use the existing search function with default parameters
     search_input = SearchInput(query=input.query, include_related=True, max_depth=1)
     return search(search_input)
+
+
+def get_entity_node_id(entity_id: str) -> str:
+    """
+    Get the node ID for an entity.
+    
+    Args:
+        entity_id: The entity ID
+        
+    Returns:
+        The node ID if found, None otherwise
+    """
+    return database.get_entity_node_id(entity_id)
 

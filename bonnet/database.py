@@ -45,125 +45,127 @@ def init_database():
         return
         
     conn = sqlite3.connect(_db_path)
-    with transaction(conn, rollback=False) as cursor:
-        # Create entities table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS entities (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                node_id TEXT NOT NULL,
-                FOREIGN KEY (node_id) REFERENCES nodes(id)
-            )
-        ''')
-        
-        # Create attributes table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS attributes (
-                id TEXT PRIMARY KEY,
-                type TEXT NOT NULL,
-                subject TEXT,
-                detail TEXT,
-                node_id TEXT NOT NULL,
-                FOREIGN KEY (node_id) REFERENCES nodes(id)
-            )
-        ''')
-        
-        # Create nodes table for knowledge graph
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS nodes (
-                id TEXT PRIMARY KEY,
-                table_name TEXT NOT NULL,
-                record_id TEXT NOT NULL,
-                searchable_content TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # Create edges table for relationships
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS edges (
-                id TEXT PRIMARY KEY,
-                from_node_id TEXT NOT NULL,
-                to_node_id TEXT NOT NULL,
-                edge_type TEXT,
-                searchable_content TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (from_node_id) REFERENCES nodes(id),
-                FOREIGN KEY (to_node_id) REFERENCES nodes(id)
-            )
-        ''')
-        
-        # Create indexes
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_entities_node_id ON entities(node_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_type ON attributes(type)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_node_id ON attributes(node_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_nodes_table_record ON nodes(table_name, record_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_from_node ON edges(from_node_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_to_node ON edges(to_node_id)')
-        
-        # Create FTS5 virtual tables with porter tokenizer for stemming
-        cursor.execute('''
-            CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(
-                searchable_content,
-                content='nodes',
-                content_rowid='rowid',
-                tokenize='porter unicode61'
-            )
-        ''')
-        
-        cursor.execute('''
-            CREATE VIRTUAL TABLE IF NOT EXISTS edges_fts USING fts5(
-                searchable_content,
-                content='edges',
-                content_rowid='rowid',
-                tokenize='porter unicode61'
-            )
-        ''')
-        
-        # Create triggers to keep FTS tables in sync
-        # Nodes FTS triggers
-        cursor.execute('''
-            CREATE TRIGGER IF NOT EXISTS nodes_ai AFTER INSERT ON nodes BEGIN
-                INSERT INTO nodes_fts(rowid, searchable_content) VALUES (new.rowid, new.searchable_content);
-            END
-        ''')
-        
-        cursor.execute('''
-            CREATE TRIGGER IF NOT EXISTS nodes_ad AFTER DELETE ON nodes BEGIN
-                INSERT INTO nodes_fts(nodes_fts, rowid, searchable_content) VALUES('delete', old.rowid, old.searchable_content);
-            END
-        ''')
-        
-        cursor.execute('''
-            CREATE TRIGGER IF NOT EXISTS nodes_au AFTER UPDATE ON nodes BEGIN
-                INSERT INTO nodes_fts(nodes_fts, rowid, searchable_content) VALUES('delete', old.rowid, old.searchable_content);
-                INSERT INTO nodes_fts(rowid, searchable_content) VALUES (new.rowid, new.searchable_content);
-            END
-        ''')
-        
-        # Edges FTS triggers
-        cursor.execute('''
-            CREATE TRIGGER IF NOT EXISTS edges_ai AFTER INSERT ON edges BEGIN
-                INSERT INTO edges_fts(rowid, searchable_content) VALUES (new.rowid, new.searchable_content);
-            END
-        ''')
-        
-        cursor.execute('''
-            CREATE TRIGGER IF NOT EXISTS edges_ad AFTER DELETE ON edges BEGIN
-                INSERT INTO edges_fts(edges_fts, rowid, searchable_content) VALUES('delete', old.rowid, old.searchable_content);
-            END
-        ''')
-        
-        cursor.execute('''
-            CREATE TRIGGER IF NOT EXISTS edges_au AFTER UPDATE ON edges BEGIN
-                INSERT INTO edges_fts(edges_fts, rowid, searchable_content) VALUES('delete', old.rowid, old.searchable_content);
-                INSERT INTO edges_fts(rowid, searchable_content) VALUES (new.rowid, new.searchable_content);
-            END
-        ''')
+    try:
+        with transaction(conn, rollback=False) as cursor:
+            # Create entities table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS entities (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    node_id TEXT NOT NULL,
+                    FOREIGN KEY (node_id) REFERENCES nodes(id)
+                )
+            ''')
+            
+            # Create attributes table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS attributes (
+                    id TEXT PRIMARY KEY,
+                    type TEXT NOT NULL,
+                    subject TEXT,
+                    detail TEXT,
+                    node_id TEXT NOT NULL,
+                    FOREIGN KEY (node_id) REFERENCES nodes(id)
+                )
+            ''')
+            
+            # Create nodes table for knowledge graph
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS nodes (
+                    id TEXT PRIMARY KEY,
+                    table_name TEXT NOT NULL,
+                    record_id TEXT NOT NULL,
+                    searchable_content TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Create edges table for relationships
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS edges (
+                    id TEXT PRIMARY KEY,
+                    from_node_id TEXT NOT NULL,
+                    to_node_id TEXT NOT NULL,
+                    edge_type TEXT,
+                    searchable_content TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (from_node_id) REFERENCES nodes(id),
+                    FOREIGN KEY (to_node_id) REFERENCES nodes(id)
+                )
+            ''')
+            
+            # Create indexes
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_entities_node_id ON entities(node_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_type ON attributes(type)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_node_id ON attributes(node_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_nodes_table_record ON nodes(table_name, record_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_from_node ON edges(from_node_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_to_node ON edges(to_node_id)')
+            
+            # Create FTS5 virtual tables with porter tokenizer for stemming
+            cursor.execute('''
+                CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(
+                    searchable_content,
+                    content='nodes',
+                    content_rowid='rowid',
+                    tokenize='porter unicode61'
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE VIRTUAL TABLE IF NOT EXISTS edges_fts USING fts5(
+                    searchable_content,
+                    content='edges',
+                    content_rowid='rowid',
+                    tokenize='porter unicode61'
+                )
+            ''')
+            
+            # Create triggers to keep FTS tables in sync
+            # Nodes FTS triggers
+            cursor.execute('''
+                CREATE TRIGGER IF NOT EXISTS nodes_ai AFTER INSERT ON nodes BEGIN
+                    INSERT INTO nodes_fts(rowid, searchable_content) VALUES (new.rowid, new.searchable_content);
+                END
+            ''')
+            
+            cursor.execute('''
+                CREATE TRIGGER IF NOT EXISTS nodes_ad AFTER DELETE ON nodes BEGIN
+                    INSERT INTO nodes_fts(nodes_fts, rowid, searchable_content) VALUES('delete', old.rowid, old.searchable_content);
+                END
+            ''')
+            
+            cursor.execute('''
+                CREATE TRIGGER IF NOT EXISTS nodes_au AFTER UPDATE ON nodes BEGIN
+                    INSERT INTO nodes_fts(nodes_fts, rowid, searchable_content) VALUES('delete', old.rowid, old.searchable_content);
+                    INSERT INTO nodes_fts(rowid, searchable_content) VALUES (new.rowid, new.searchable_content);
+                END
+            ''')
+            
+            # Edges FTS triggers
+            cursor.execute('''
+                CREATE TRIGGER IF NOT EXISTS edges_ai AFTER INSERT ON edges BEGIN
+                    INSERT INTO edges_fts(rowid, searchable_content) VALUES (new.rowid, new.searchable_content);
+                END
+            ''')
+            
+            cursor.execute('''
+                CREATE TRIGGER IF NOT EXISTS edges_ad AFTER DELETE ON edges BEGIN
+                    INSERT INTO edges_fts(edges_fts, rowid, searchable_content) VALUES('delete', old.rowid, old.searchable_content);
+                END
+            ''')
+            
+            cursor.execute('''
+                CREATE TRIGGER IF NOT EXISTS edges_au AFTER UPDATE ON edges BEGIN
+                    INSERT INTO edges_fts(edges_fts, rowid, searchable_content) VALUES('delete', old.rowid, old.searchable_content);
+                    INSERT INTO edges_fts(rowid, searchable_content) VALUES (new.rowid, new.searchable_content);
+                END
+            ''')
+    finally:
+        conn.close()
     
     _initialized = True
-    return conn
 
 @searchable_builder('entities')
 def build_entity_searchable_content(record_data: dict) -> str:
@@ -201,7 +203,7 @@ def create_node(table_name: str, record_id: str, record_data: dict) -> str:
 
 def store_entity(e_id: str, entity_name: str) -> bool:
     """Store a master ENTITY record."""
-    conn = init_database()
+    init_database()
     
     # First create the node
     entity_data = {
@@ -209,7 +211,7 @@ def store_entity(e_id: str, entity_name: str) -> bool:
     }
     node_id = create_node('entities', e_id, entity_data)
     
-    with transaction(conn) as cursor:
+    with transaction() as cursor:
         # Check if entity already exists
         cursor.execute("SELECT id FROM entities WHERE id = ?", (e_id,))
         if cursor.fetchone():
@@ -224,8 +226,11 @@ def store_entity(e_id: str, entity_name: str) -> bool:
     return True
 
 def store_attribute(attr_id: str, attr_type: str, subject: str, detail: str) -> bool:
-    """Store an attribute (fact, task, rule, ref)."""
-    conn = init_database()
+    """Store an attribute (fact, task, rule, ref) and link it to the entity."""
+    init_database()
+    
+    # Generate unique attribute ID
+    unique_attr_id = f"{attr_id}-{uuid.uuid4().hex[:8]}"
     
     # First create the node
     attribute_data = {
@@ -233,14 +238,29 @@ def store_attribute(attr_id: str, attr_type: str, subject: str, detail: str) -> 
         'subject': subject,
         'detail': detail
     }
-    node_id = create_node('attributes', attr_id, attribute_data)
+    attribute_node_id = create_node('attributes', unique_attr_id, attribute_data)
     
-    with transaction(conn) as cursor:
+    with transaction() as cursor:
         # Insert attribute record with node_id
         cursor.execute('''
             INSERT INTO attributes (id, type, subject, detail, node_id)
             VALUES (?, ?, ?, ?, ?)
-        ''', (attr_id, attr_type, subject, detail, node_id))
+        ''', (unique_attr_id, attr_type, subject, detail, attribute_node_id))
+        
+        # Find the entity node that this attribute is about
+        cursor.execute('''
+            SELECT node_id FROM entities WHERE id = ?
+        ''', (attr_id,))
+        
+        entity_node_row = cursor.fetchone()
+        if entity_node_row:
+            entity_node_id = entity_node_row[0]
+            # Create an edge from entity to attribute within the same transaction
+            edge_id = f"E-{uuid.uuid4().hex[:8]}"
+            cursor.execute('''
+                INSERT INTO edges (id, from_node_id, to_node_id, edge_type, searchable_content)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (edge_id, entity_node_id, attribute_node_id, "has_attribute", f"{attr_type}: {subject}"))
     
     return True
 
@@ -354,11 +374,11 @@ def get_related_nodes(node_id: str, max_depth: int = 1) -> List[Dict]:
 
 def create_edge(from_node_id: str, to_node_id: str, edge_type: str, searchable_content: str = "") -> str:
     """Create an edge between two nodes."""
-    conn = init_database()
+    init_database()
     
     edge_id = f"E-{uuid.uuid4().hex[:8]}"
     
-    with transaction(conn) as cursor:
+    with transaction() as cursor:
         cursor.execute('''
             INSERT INTO edges (id, from_node_id, to_node_id, edge_type, searchable_content)
             VALUES (?, ?, ?, ?, ?)
@@ -601,3 +621,12 @@ def get_edges_from_node(node_id: str) -> List[Dict]:
             'edge_type': row[3],
             'searchable_content': row[4]
         } for row in rows]
+
+
+def get_entity_node_id(entity_id: str) -> str:
+    """Get the node ID for an entity."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT node_id FROM entities WHERE id = ?", (entity_id,))
+        row = cursor.fetchone()
+        return row[0] if row else None
