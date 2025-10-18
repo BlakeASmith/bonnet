@@ -44,11 +44,6 @@ class SearchResult(BaseModel):
     edge_type: Optional[str] = None
 
 
-class KnowledgeGraphSearchResult(BaseModel):
-    search_results: List[SearchResult]
-    related_records: List[Union[Entity, Attribute]]
-
-
 class ContextTree(BaseModel):
     entities: List[Union[Entity, "ContextTree"]] = Field(default_factory=list)
     search_results: Optional[List[SearchResult]] = None

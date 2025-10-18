@@ -1,6 +1,6 @@
 """Domain layer that returns Pydantic models after database fetches."""
 
-from ._models import Attribute, Entity, ContextTree, SearchResult, KnowledgeGraphSearchResult
+from ._models import Attribute, Entity, ContextTree, SearchResult
 from ._input_models import (
     GetEntityContextInput,
     SearchEntitiesInput,
@@ -67,7 +67,7 @@ def search_entities(input: SearchEntitiesInput) -> ContextTree:
     
     return ContextTree(entities=entities)
 
-def search_knowledge_graph(input: SearchKnowledgeGraphInput) -> KnowledgeGraphSearchResult:
+def search_knowledge_graph(input: SearchKnowledgeGraphInput) -> ContextTree:
     """
     Search the knowledge graph using FTS and optionally include related nodes.
     
@@ -75,7 +75,7 @@ def search_knowledge_graph(input: SearchKnowledgeGraphInput) -> KnowledgeGraphSe
         input: SearchKnowledgeGraphInput containing query, include_related, and max_depth
         
     Returns:
-        KnowledgeGraphSearchResult containing search results and related records
+        ContextTree containing search results and related records
     """
     # Search the knowledge graph
     search_data = database.search_knowledge_graph(
@@ -122,7 +122,7 @@ def search_knowledge_graph(input: SearchKnowledgeGraphInput) -> KnowledgeGraphSe
             )
             related_records.append(attribute)
     
-    return KnowledgeGraphSearchResult(
+    return ContextTree(
         search_results=search_results,
         related_records=related_records
     )

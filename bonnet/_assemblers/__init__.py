@@ -1,16 +1,16 @@
 from typing import Protocol, Union
 
-from .._models import Entity, ContextTree, KnowledgeGraphSearchResult, SearchResult, Attribute
+from .._models import Entity, ContextTree, SearchResult, Attribute
 
 
 class Assembler(Protocol):
-    def __call__(self, context: Union[ContextTree, KnowledgeGraphSearchResult]) -> str:
+    def __call__(self, context: ContextTree) -> str:
         """Assemble a context into a string"""
         ...
 
 
 def xml_assembler() -> Assembler:
-    """Create an XML assembler that converts ContextTree or KnowledgeGraphSearchResult to XML format."""
+    """Create an XML assembler that converts ContextTree to XML format."""
     
     def assemble_entity(entity: Entity) -> str:
         # Group attributes by type
@@ -39,37 +39,35 @@ def xml_assembler() -> Assembler:
         else:  # edge
             return f"<search_result type=\"edge\" edge_id=\"{result.edge_id}\" from=\"{result.from_node_id}\" to=\"{result.to_node_id}\" edge_type=\"{result.edge_type}\">{result.searchable_content}</search_result>"
     
-    def assemble(context: Union[ContextTree, KnowledgeGraphSearchResult]) -> str:
-        if isinstance(context, ContextTree):
-            return '\n'.join([
-                f"<context>",
-                    *[
-                        line for entity 
-                        in context.entities if isinstance(entity, Entity) 
-                        for line in assemble_entity(entity).splitlines()
-                    ],
-                f"</context>"
-            ])
-        else:  # KnowledgeGraphSearchResult
-            lines = ["<knowledge_graph_search>"]
-            
-            if context.search_results:
-                lines.append("  <search_results>")
-                for result in context.search_results:
-                    lines.append(f"    {assemble_search_result(result)}")
-                lines.append("  </search_results>")
-            
-            if context.related_records:
-                lines.append("  <related_records>")
-                for record in context.related_records:
-                    if isinstance(record, Entity):
-                        for line in assemble_entity(record).splitlines():
-                            lines.append(f"    {line}")
-                    elif isinstance(record, Attribute):
-                        lines.append(f"    {assemble_attribute(record)}")
-                lines.append("  </related_records>")
-            
-            lines.append("</knowledge_graph_search>")
-            return '\n'.join(lines)
+    def assemble(context: ContextTree) -> str:
+        lines = ["<context>"]
+        
+        # Add entities
+        if context.entities:
+            for entity in context.entities:
+                if isinstance(entity, Entity):
+                    for line in assemble_entity(entity).splitlines():
+                        lines.append(f"  {line}")
+        
+        # Add search results if present
+        if context.search_results:
+            lines.append("  <search_results>")
+            for result in context.search_results:
+                lines.append(f"    {assemble_search_result(result)}")
+            lines.append("  </search_results>")
+        
+        # Add related records if present
+        if context.related_records:
+            lines.append("  <related_records>")
+            for record in context.related_records:
+                if isinstance(record, Entity):
+                    for line in assemble_entity(record).splitlines():
+                        lines.append(f"    {line}")
+                elif isinstance(record, Attribute):
+                    lines.append(f"    {assemble_attribute(record)}")
+            lines.append("  </related_records>")
+        
+        lines.append("</context>")
+        return '\n'.join(lines)
     
     return assemble
