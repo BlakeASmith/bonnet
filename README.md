@@ -8,6 +8,12 @@ A Python CLI tool for managing structured knowledge base (memory) and preparing 
 pip install -e .
 ```
 
+## Usage
+
+The CLI can be run in two ways:
+- `bonnet` (if installed and in PATH)
+- `python -m bonnet` (from the project directory)
+
 ## Dependencies
 
 - Python 3.7+

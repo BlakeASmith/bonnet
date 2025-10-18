@@ -17,9 +17,6 @@ def handle_errors(func):
             sys.exit(1)
     return wrapper
 
-def parse_fact_text(text):
-    """Parse fact text as single detail field"""
-    return "fact", text
 
 def display_context(context_data):
     """Display XML context for an entity"""
@@ -81,9 +78,8 @@ def topic(id, text):
 @handle_errors
 def fact(about, text):
     """Store a FACT attribute"""
-    subject, detail = parse_fact_text(text)
-    database.store_attribute(about, 'FACT', subject, detail)
-    click.echo(f"Stored fact '{detail}' for entity {about}")
+    database.store_attribute(about, 'FACT', 'fact', text)
+    click.echo(f"Stored fact '{text}' for entity {about}")
 
 @cli.command()
 @click.option('--about', required=True, help='Entity ID to link to')
