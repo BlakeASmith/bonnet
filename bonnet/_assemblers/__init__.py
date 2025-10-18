@@ -10,7 +10,7 @@ class Assembler(Protocol):
 
 
 def xml_assembler() -> Assembler:
-    """Create an XML assembler that converts ContextTree to compact knowledge graph XML format."""
+    """Create an XML assembler that converts ContextTree to compact knowledge graph XML format with context root."""
     
     def assemble_entity(entity: Entity) -> str:
         # Group attributes by type
@@ -35,7 +35,7 @@ def xml_assembler() -> Assembler:
     
     
     def assemble(context: ContextTree) -> str:
-        lines = ["<knowledge_graph>"]
+        lines = ["<context>"]
         
         # Add entities from the context
         if context.entities:
@@ -53,7 +53,7 @@ def xml_assembler() -> Assembler:
                 elif isinstance(record, Attribute):
                     lines.append(f"  {assemble_attribute(record)}")
         
-        lines.append("</knowledge_graph>")
+        lines.append("</context>")
         return '\n'.join(lines)
     
     return assemble
