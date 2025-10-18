@@ -56,12 +56,7 @@ def assemble(context: ContextTree) -> str:
             result_lines.append(f"{indent}<entity id=\"{entity.id}\">")
             result_lines.append(f"{indent}  <name>{entity.name}</name>")
             
-            # Add attributes if any
-            if entity.attributes:
-                for attr in entity.attributes:
-                    result_lines.append(f"{indent}  {assemble_attribute(attr)}")
-            
-            # Add edges as relationships
+            # Add edges as relationships (attributes are found through graph traversal)
             if tree.edges:
                 for edge in tree.edges:
                     result_lines.append(f"{indent}  <relationship type=\"{edge.edge_type}\" to=\"{edge.to_node_id}\">")

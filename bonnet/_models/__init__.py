@@ -13,7 +13,6 @@ class Attribute(BaseModel):
 class Entity(BaseModel):
     id: str
     name: str
-    attributes: List[Attribute] = Field(default_factory=list)
 
 
 class Node(BaseModel):
