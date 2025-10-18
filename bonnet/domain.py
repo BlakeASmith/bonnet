@@ -1,6 +1,6 @@
 """Domain layer that returns Pydantic models after database fetches."""
 
-from _models import Attribute, Entity, ContextTree, SearchResult, Node, Edge
+from _models import Attribute, Entity, ContextTree, SearchResult, Node, Edge, build_model_from_record
 from typing import Dict
 from _input_models import (
     GetEntityContextInput,
@@ -74,24 +74,13 @@ def search(input: SearchInput) -> ContextTree:
             searchable_content=node_data['node']['searchable_content']
         )
         
-        # Create the record model (entity or attribute) and determine type
+        # Create the record model (entity or attribute) and determine type using registry
         data = None
         node_type = 'root'
         
-        if node_data['record']['type'] == 'entity':
-            data = Entity(
-                id=node_data['record']['id'],
-                name=node_data['record']['name']
-            )
-            node_type = 'entity'
-        elif node_data['record']['type'] == 'attribute':
-            data = Attribute(
-                id=node_data['record']['id'],
-                type=node_data['record']['attr_type'],
-                subject=node_data['record']['subject'],
-                detail=node_data['record']['detail']
-            )
-            node_type = 'attribute'
+        if node_data['record']['type'] in ['entity', 'attribute']:
+            data = build_model_from_record(node_data['record'])
+            node_type = node_data['record']['type']
         
         # Create edge models
         edges = []

@@ -1,4 +1,4 @@
-from typing import List, Union, Optional, Dict, Any
+from typing import List, Union, Optional, Dict, Any, Callable
 
 from pydantic import BaseModel, Field
 
@@ -51,4 +51,45 @@ class ContextTree(BaseModel):
     node: Node
     children: List["ContextTree"] = Field(default_factory=list)
     edges: List[Edge] = Field(default_factory=list)
+
+
+# Registry pattern for building Pydantic models from database records
+MODEL_BUILDERS: Dict[str, Callable[[Dict[str, Any]], Union[Entity, Attribute]]] = {}
+
+
+def model_builder(record_type: str) -> Callable[[Callable], Callable]:
+    """Decorator to register a function that builds a Pydantic model from a database record."""
+    def decorator(func: Callable[[Dict[str, Any]], Union[Entity, Attribute]]) -> Callable:
+        MODEL_BUILDERS[record_type] = func
+        return func
+    return decorator
+
+
+@model_builder('entity')
+def build_entity_model(record_data: Dict[str, Any]) -> Entity:
+    """Build an Entity model from database record data."""
+    return Entity(
+        id=record_data['id'],
+        name=record_data['name']
+    )
+
+
+@model_builder('attribute')
+def build_attribute_model(record_data: Dict[str, Any]) -> Attribute:
+    """Build an Attribute model from database record data."""
+    return Attribute(
+        id=record_data['id'],
+        type=record_data['attr_type'],
+        subject=record_data['subject'],
+        detail=record_data['detail']
+    )
+
+
+def build_model_from_record(record_data: Dict[str, Any]) -> Union[Entity, Attribute]:
+    """Build the appropriate Pydantic model from a database record using the registry."""
+    record_type = record_data.get('type')
+    if record_type not in MODEL_BUILDERS:
+        raise ValueError(f"Unknown record type: {record_type}")
+    
+    return MODEL_BUILDERS[record_type](record_data)
 
