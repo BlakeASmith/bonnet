@@ -21,7 +21,6 @@ class StoreEntityInput(BaseModel):
 
 class StoreAttributeInput(BaseModel):
     attr_id: str
-    entity_id: str
     attr_type: str
     subject: str
     detail: str

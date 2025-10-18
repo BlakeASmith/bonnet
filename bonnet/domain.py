@@ -156,17 +156,16 @@ def store_entity(input: StoreEntityInput) -> bool:
 
 def store_attribute(input: StoreAttributeInput) -> bool:
     """
-    Store a linked attribute (fact, task, rule, ref).
+    Store an attribute (fact, task, rule, ref).
     
     Args:
-        input: StoreAttributeInput containing attr_id, entity_id, attr_type, subject, and detail
+        input: StoreAttributeInput containing attr_id, attr_type, subject, and detail
         
     Returns:
         True if successful
     """
     return database.store_attribute(
         input.attr_id,
-        input.entity_id, 
         input.attr_type, 
         input.subject, 
         input.detail

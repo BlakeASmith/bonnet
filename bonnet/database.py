@@ -56,11 +56,9 @@ def init_database():
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS attributes (
                 id TEXT PRIMARY KEY,
-                entity_id TEXT NOT NULL,
                 type TEXT NOT NULL,
                 subject TEXT,
-                detail TEXT,
-                FOREIGN KEY (entity_id) REFERENCES entities(id)
+                detail TEXT
             )
         ''')
         
@@ -91,7 +89,6 @@ def init_database():
         
         # Create indexes
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_entity_id ON attributes(entity_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_type ON attributes(type)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_nodes_table_record ON nodes(table_name, record_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_from_node ON edges(from_node_id)')
@@ -216,21 +213,16 @@ def store_entity(e_id: str, entity_name: str) -> bool:
     
     return True
 
-def store_attribute(attr_id: str, entity_id: str, attr_type: str, subject: str, detail: str) -> bool:
-    """Store a linked attribute (fact, task, rule, ref)."""
+def store_attribute(attr_id: str, attr_type: str, subject: str, detail: str) -> bool:
+    """Store an attribute (fact, task, rule, ref)."""
     conn = init_database()
     
     with transaction(conn) as cursor:
-        # Check if entity exists
-        cursor.execute("SELECT id FROM entities WHERE id = ?", (entity_id,))
-        if not cursor.fetchone():
-            raise ValueError(f"Entity ID {entity_id} does not exist")
-        
         # Insert attribute record
         cursor.execute('''
-            INSERT INTO attributes (id, entity_id, type, subject, detail)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (attr_id, entity_id, attr_type, subject, detail))
+            INSERT INTO attributes (id, type, subject, detail)
+            VALUES (?, ?, ?, ?)
+        ''', (attr_id, attr_type, subject, detail))
     
     # Create corresponding node outside the transaction
     attribute_data = {
@@ -399,7 +391,7 @@ def get_record_by_node(node_id: str) -> Dict:
     
     elif table_name == 'attributes':
         cursor.execute('''
-            SELECT id, entity_id, type, subject, detail
+            SELECT id, type, subject, detail
             FROM attributes WHERE id = ?
         ''', (record_id,))
         
@@ -408,10 +400,9 @@ def get_record_by_node(node_id: str) -> Dict:
             return {
                 'type': 'attribute',
                 'id': row[0],
-                'entity_id': row[1],
-                'attr_type': row[2],
-                'subject': row[3],
-                'detail': row[4]
+                'attr_type': row[1],
+                'subject': row[2],
+                'detail': row[3]
             }
     
     conn.close()
@@ -434,12 +425,11 @@ def get_entity_context(e_id: str) -> Dict:
     
     entity_name = entity_row[0]
     
-    # Get all linked attributes
+    # Get all attributes (relationships are now handled via graph edges)
     cursor.execute('''
         SELECT id, type, subject, detail FROM attributes 
-        WHERE entity_id = ?
         ORDER BY type, subject
-    ''', (e_id,))
+    ''')
     
     attributes = []
     for row in cursor.fetchall():
