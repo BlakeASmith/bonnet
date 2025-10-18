@@ -1,6 +1,6 @@
 from typing import Protocol, Union
 
-from .._models import Entity, ContextTree, SearchResult, Attribute
+from .._models import Entity, ContextTree, SearchResult, Attribute, File
 from typing import List
 
 
@@ -18,6 +18,9 @@ def xml_assembler() -> Assembler:
         
         def assemble_attribute(attribute: Attribute) -> str:
             return f"<attribute id=\"{attribute.id}\" type=\"{attribute.type}\">{attribute.subject}:{attribute.detail}</attribute>"
+        
+        def assemble_file(file: File) -> str:
+            return f"<file id=\"{file.id}\" path=\"{file.file_path}\">{file.description}</file>"
         
         lines = ["<context>"]
         
@@ -41,6 +44,10 @@ def xml_assembler() -> Assembler:
             elif tree.type == 'attribute' and tree.data:
                 attribute = tree.data
                 result_lines.append(f"{indent}{assemble_attribute(attribute)}")
+            
+            elif tree.type == 'file' and tree.data:
+                file = tree.data
+                result_lines.append(f"{indent}{assemble_file(file)}")
             
             elif tree.type == 'root':
                 # For root nodes, process all children

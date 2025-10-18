@@ -8,6 +8,8 @@ from ._input_models import (
     StoreEntityInput,
     StoreAttributeInput,
     CreateEdgeInput,
+    StoreFileInput,
+    LinkInput,
 )
 from . import database
 
@@ -55,7 +57,7 @@ def search(input: SearchInput) -> ContextTree:
         data = None
         node_type = 'root'
         
-        if node_data['record']['type'] in ['entity', 'attribute']:
+        if node_data['record']['type'] in ['entity', 'attribute', 'file']:
             data = build_model_from_record(node_data['record'])
             node_type = node_data['record']['type']
         
@@ -194,4 +196,71 @@ def get_entity_node_id(entity_id: str) -> str:
         The node ID if found, None otherwise
     """
     return database.get_entity_node_id(entity_id)
+
+
+def store_file(input: StoreFileInput) -> bool:
+    """
+    Store a file record.
+    
+    Args:
+        input: StoreFileInput containing file_id, file_path, and description
+        
+    Returns:
+        True if successful
+    """
+    return database.store_file(
+        input.file_id,
+        input.file_path,
+        input.description
+    )
+
+
+
+
+def get_file_node_id(file_id: str) -> str:
+    """
+    Get the node ID for a file.
+    
+    Args:
+        file_id: The file ID
+        
+    Returns:
+        The node ID if found, None otherwise
+    """
+    return database.get_file_node_id(file_id)
+
+
+def link(input: LinkInput) -> str:
+    """
+    Link any record type to any other record type.
+    
+    Args:
+        input: LinkInput containing record types, IDs, edge type, and content
+        
+    Returns:
+        Edge ID if successful
+    """
+    # Map record types to table names
+    type_to_table = {
+        'entity': 'entities',
+        'file': 'files',
+        'attribute': 'attributes'
+    }
+    
+    from_table = type_to_table.get(input.from_type)
+    to_table = type_to_table.get(input.to_type)
+    
+    if not from_table:
+        raise ValueError(f"Unknown record type: {input.from_type}")
+    if not to_table:
+        raise ValueError(f"Unknown record type: {input.to_type}")
+    
+    return database.link_nodes(
+        from_table,
+        input.from_id,
+        to_table,
+        input.to_id,
+        input.edge_type,
+        input.content
+    )
 

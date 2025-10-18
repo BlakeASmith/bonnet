@@ -69,6 +69,18 @@ def init_database():
                 )
             ''')
             
+            # Create files table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS files (
+                    id TEXT PRIMARY KEY,
+                    file_path TEXT NOT NULL,
+                    description TEXT,
+                    node_id TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (node_id) REFERENCES nodes(id)
+                )
+            ''')
+            
             # Create nodes table for knowledge graph
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS nodes (
@@ -107,6 +119,8 @@ def init_database():
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_entities_node_id ON entities(node_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_type ON attributes(type)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_node_id ON attributes(node_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_files_path ON files(file_path)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_files_node_id ON files(node_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_nodes_table_record ON nodes(table_name, record_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_from_node ON edges(from_node_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_to_node ON edges(to_node_id)')
@@ -188,6 +202,14 @@ def build_attribute_searchable_content(record_data: dict) -> str:
         content_parts.append(record_data['subject'])
     if record_data.get('detail'):
         content_parts.append(record_data['detail'])
+    return ' '.join(content_parts)
+
+@searchable_builder('files')
+def build_file_searchable_content(record_data: dict) -> str:
+    """Build searchable content for a file node."""
+    content_parts = [record_data.get('file_path', '')]
+    if record_data.get('description'):
+        content_parts.append(record_data['description'])
     return ' '.join(content_parts)
 
 def create_node(table_name: str, record_id: str, record_data: dict) -> str:
@@ -306,13 +328,16 @@ def search_nodes(query: str) -> List[Dict]:
     
     results = []
     
+    # Escape the query for FTS
+    escaped_query = f'"{query}"'
+    
     # Search nodes
     cursor.execute('''
         SELECT n.id, n.table_name, n.record_id, n.searchable_content
         FROM nodes n
         JOIN nodes_fts fts ON n.rowid = fts.rowid
         WHERE nodes_fts MATCH ?
-    ''', (query,))
+    ''', (escaped_query,))
     
     for row in cursor.fetchall():
         results.append({
@@ -329,7 +354,7 @@ def search_nodes(query: str) -> List[Dict]:
         FROM edges e
         JOIN edges_fts fts ON e.rowid = fts.rowid
         WHERE edges_fts MATCH ?
-    ''', (query,))
+    ''', (escaped_query,))
     
     for row in cursor.fetchall():
         results.append({
@@ -469,6 +494,22 @@ def get_record_by_node(node_id: str) -> Dict:
                 'subject': row[2],
                 'detail': row[3],
                 'node_id': row[4]
+            }
+    
+    elif table_name == 'files':
+        cursor.execute('''
+            SELECT id, file_path, description, node_id
+            FROM files WHERE id = ?
+        ''', (record_id,))
+        
+        row = cursor.fetchone()
+        if row:
+            return {
+                'type': 'file',
+                'id': row[0],
+                'file_path': row[1],
+                'description': row[2],
+                'node_id': row[3]
             }
     
     conn.close()
@@ -662,5 +703,70 @@ def get_entity_node_id(entity_id: str) -> str:
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT node_id FROM entities WHERE id = ?", (entity_id,))
+        row = cursor.fetchone()
+        return row[0] if row else None
+
+def store_file(file_id: str, file_path: str, description: str = None) -> bool:
+    """Store a file record."""
+    init_database()
+    
+    # First create the node
+    file_data = {
+        'file_path': file_path,
+        'description': description or ''
+    }
+    node_id = create_node('files', file_id, file_data)
+    
+    with transaction() as cursor:
+        # Check if file already exists
+        cursor.execute("SELECT id FROM files WHERE id = ?", (file_id,))
+        if cursor.fetchone():
+            raise ValueError(f"File ID {file_id} already exists")
+        
+        # Insert file record with node_id
+        cursor.execute('''
+            INSERT INTO files (id, file_path, description, node_id)
+            VALUES (?, ?, ?, ?)
+        ''', (file_id, file_path, description, node_id))
+    
+    return True
+
+def get_node_id_by_record_id(table_name: str, record_id: str) -> str:
+    """Get the node ID for any record by table name and record ID."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT node_id FROM {table_name} WHERE id = ?", (record_id,))
+        row = cursor.fetchone()
+        return row[0] if row else None
+
+def link_nodes(from_table: str, from_record_id: str, to_table: str, to_record_id: str, edge_type: str = "references", searchable_content: str = None) -> str:
+    """Link any node type to any other node type."""
+    init_database()
+    
+    # Get source node ID
+    from_node_id = get_node_id_by_record_id(from_table, from_record_id)
+    if not from_node_id:
+        raise ValueError(f"Record {from_record_id} not found in table {from_table}")
+    
+    # Get target node ID
+    to_node_id = get_node_id_by_record_id(to_table, to_record_id)
+    if not to_node_id:
+        raise ValueError(f"Record {to_record_id} not found in table {to_table}")
+    
+    # Create searchable content if not provided
+    if not searchable_content:
+        searchable_content = f"{from_table} {from_record_id} {edge_type} {to_table} {to_record_id}"
+    
+    # Create edge between nodes
+    edge_id = create_edge(from_node_id, to_node_id, edge_type, searchable_content)
+    
+    return edge_id
+
+
+def get_file_node_id(file_id: str) -> str:
+    """Get the node ID for a file."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT node_id FROM files WHERE id = ?", (file_id,))
         row = cursor.fetchone()
         return row[0] if row else None
