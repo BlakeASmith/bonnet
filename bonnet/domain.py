@@ -1,11 +1,13 @@
 """Domain layer that returns Pydantic models after database fetches."""
 
-from ._models import Attribute, Entity, ContextTree
+from ._models import Attribute, Entity, ContextTree, SearchResult, KnowledgeGraphSearchResult
 from ._input_models import (
     GetEntityContextInput,
     SearchEntitiesInput,
+    SearchKnowledgeGraphInput,
     StoreEntityInput,
     StoreAttributeInput,
+    CreateEdgeInput,
 )
 from . import database
 
@@ -25,17 +27,22 @@ def get_entity_context(input: GetEntityContextInput) -> ContextTree:
     # Convert attributes from dicts to Attribute models
     attributes = [
         Attribute(
+            id=attr['id'],
             type=attr['type'],
             subject=attr['subject'],
-            detail=attr['detail']
+            detail=attr['detail'],
+            file_path=attr.get('file_path')
         )
         for attr in context_data['attributes']
     ]
     
     # Create Entity model
     entity = Entity(
-        e_id=context_data['e_id'],
-        entity_name=context_data['entity_name'],
+        id=context_data['e_id'],
+        name=context_data['entity_name'],
+        description=context_data.get('entity_description'),
+        tags=context_data.get('entity_tags'),
+        file_path=context_data.get('entity_file_path'),
         attributes=attributes
     )
     
@@ -45,7 +52,8 @@ def get_entity_context(input: GetEntityContextInput) -> ContextTree:
 
 def search_entities(input: SearchEntitiesInput) -> ContextTree:
     """
-    Search for entities matching the query.
+    Search for entities matching the query using the old search method.
+    This is kept for backward compatibility.
     
     Args:
         input: SearchEntitiesInput containing query string
@@ -53,33 +61,79 @@ def search_entities(input: SearchEntitiesInput) -> ContextTree:
     Returns:
         ContextTree containing all matching entities
     """
-    results = database.search_entities(input.query)
-    entities = []
+    # For now, use the knowledge graph search and filter for entities only
+    kg_results = search_knowledge_graph(SearchKnowledgeGraphInput(query=input.query))
     
-    for result in results:
-        # Get full context for each entity
-        context_data = database.get_entity_context(result['e_id'])
-        
-        # Convert attributes from dicts to Attribute models
-        attributes = [
-            Attribute(
-                type=attr['type'],
-                subject=attr['subject'],
-                detail=attr['detail']
-            )
-            for attr in context_data['attributes']
-        ]
-        
-        # Create Entity model
-        entity = Entity(
-            e_id=context_data['e_id'],
-            entity_name=context_data['entity_name'],
-            attributes=attributes
-        )
-        
-        entities.append(entity)
+    entities = []
+    for record in kg_results.related_records:
+        if isinstance(record, Entity):
+            entities.append(record)
     
     return ContextTree(entities=entities)
+
+def search_knowledge_graph(input: SearchKnowledgeGraphInput) -> KnowledgeGraphSearchResult:
+    """
+    Search the knowledge graph using FTS and optionally include related nodes.
+    
+    Args:
+        input: SearchKnowledgeGraphInput containing query, include_related, and max_depth
+        
+    Returns:
+        KnowledgeGraphSearchResult containing search results and related records
+    """
+    # Search the knowledge graph
+    search_data = database.search_knowledge_graph(
+        input.query, 
+        input.include_related, 
+        input.max_depth
+    )
+    
+    # Convert search results to SearchResult models
+    search_results = []
+    for result in search_data['search_results']:
+        search_result = SearchResult(
+            searchable_content=result['searchable_content'],
+            source=result['source']
+        )
+        
+        if result['source'] == 'node':
+            search_result.node_id = result['node_id']
+            search_result.table_name = result['table_name']
+            search_result.record_id = result['record_id']
+        else:  # edge
+            search_result.edge_id = result['edge_id']
+            search_result.from_node_id = result['from_node_id']
+            search_result.to_node_id = result['to_node_id']
+            search_result.edge_type = result['edge_type']
+        
+        search_results.append(search_result)
+    
+    # Convert related records to appropriate models
+    related_records = []
+    for record_data in search_data['related_records']:
+        if record_data['type'] == 'entity':
+            entity = Entity(
+                id=record_data['id'],
+                name=record_data['name'],
+                description=record_data.get('description'),
+                tags=record_data.get('tags'),
+                file_path=record_data.get('file_path')
+            )
+            related_records.append(entity)
+        elif record_data['type'] == 'attribute':
+            attribute = Attribute(
+                id=record_data['id'],
+                type=record_data['attr_type'],
+                subject=record_data['subject'],
+                detail=record_data['detail'],
+                file_path=record_data.get('file_path')
+            )
+            related_records.append(attribute)
+    
+    return KnowledgeGraphSearchResult(
+        search_results=search_results,
+        related_records=related_records
+    )
 
 
 def store_entity(input: StoreEntityInput) -> bool:
@@ -87,12 +141,18 @@ def store_entity(input: StoreEntityInput) -> bool:
     Store a master ENTITY record.
     
     Args:
-        input: StoreEntityInput containing e_id, entity_name, and memo_search
+        input: StoreEntityInput containing e_id, name, description, tags, and file_path
         
     Returns:
         True if successful
     """
-    return database.store_entity(input.e_id, input.entity_name, input.memo_search)
+    return database.store_entity(
+        input.e_id, 
+        input.name, 
+        input.description or "", 
+        input.tags or "", 
+        input.file_path
+    )
 
 
 def store_attribute(input: StoreAttributeInput) -> bool:
@@ -100,10 +160,35 @@ def store_attribute(input: StoreAttributeInput) -> bool:
     Store a linked attribute (fact, task, rule, ref).
     
     Args:
-        input: StoreAttributeInput containing e_id, attr_type, subject, and detail
+        input: StoreAttributeInput containing attr_id, entity_id, attr_type, subject, detail, and file_path
         
     Returns:
         True if successful
     """
-    return database.store_attribute(input.e_id, input.attr_type, input.subject, input.detail)
+    return database.store_attribute(
+        input.attr_id,
+        input.entity_id, 
+        input.attr_type, 
+        input.subject, 
+        input.detail,
+        input.file_path
+    )
+
+
+def create_edge(input: CreateEdgeInput) -> str:
+    """
+    Create an edge between two nodes.
+    
+    Args:
+        input: CreateEdgeInput containing from_node_id, to_node_id, edge_type, and searchable_content
+        
+    Returns:
+        Edge ID if successful
+    """
+    return database.create_edge(
+        input.from_node_id,
+        input.to_node_id,
+        input.edge_type,
+        input.searchable_content or ""
+    )
 

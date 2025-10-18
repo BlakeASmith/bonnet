@@ -1,17 +1,23 @@
 import sqlite3
 import os
+import uuid
 from contextlib import contextmanager
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Callable
 
 # Global database connection
 _db_path = "bonnet.db"
 _initialized = False
 
+# Registry for searchable content builders
+SEARCHABLE_BUILDERS: Dict[str, Callable[[Dict], str]] = {}
+
 @contextmanager
 def transaction(conn: sqlite3.Connection = None, rollback: bool = True):
     """Context manager for database transactions"""
+    should_close = False
     if conn is None:
         conn = sqlite3.connect(_db_path)
+        should_close = True
     try:
         yield conn.cursor()
         conn.commit()
@@ -20,140 +26,413 @@ def transaction(conn: sqlite3.Connection = None, rollback: bool = True):
             conn.rollback()
         raise
     finally:
-        conn.close()
+        if should_close:
+            conn.close()
+
+def searchable_builder(table_name: str):
+    """Decorator to register searchable content builders for tables."""
+    def decorator(func):
+        SEARCHABLE_BUILDERS[table_name] = func
+        return func
+    return decorator
 
 def init_database():
-    """Initialize the database with the memories table and FTS5 index."""
+    """Initialize the database with the new knowledge graph schema."""
     global _initialized
     if _initialized:
         return
         
     conn = sqlite3.connect(_db_path)
     with transaction(conn, rollback=False) as cursor:
-        # Create memories table
+        # Create entities table
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS memories (
+            CREATE TABLE IF NOT EXISTS entities (
                 id TEXT PRIMARY KEY,
-                e_id TEXT,
-                type TEXT,
-                date TEXT,
-                subject TEXT,
-                detail TEXT,
-                memo_search TEXT
+                name TEXT NOT NULL,
+                description TEXT,
+                tags TEXT,
+                file_path TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
-        # Create index on e_id
+        # Create attributes table
         cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_e_id ON memories(e_id)
+            CREATE TABLE IF NOT EXISTS attributes (
+                id TEXT PRIMARY KEY,
+                entity_id TEXT NOT NULL,
+                type TEXT NOT NULL,
+                subject TEXT,
+                detail TEXT,
+                file_path TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (entity_id) REFERENCES entities(id)
+            )
         ''')
         
-        # Create FTS5 virtual table for search
+        # Create nodes table for knowledge graph
         cursor.execute('''
-            CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
-                memo_search,
-                content='memories',
+            CREATE TABLE IF NOT EXISTS nodes (
+                id TEXT PRIMARY KEY,
+                table_name TEXT NOT NULL,
+                record_id TEXT NOT NULL,
+                searchable_content TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Create edges table for relationships
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS edges (
+                id TEXT PRIMARY KEY,
+                from_node_id TEXT NOT NULL,
+                to_node_id TEXT NOT NULL,
+                edge_type TEXT,
+                searchable_content TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (from_node_id) REFERENCES nodes(id),
+                FOREIGN KEY (to_node_id) REFERENCES nodes(id)
+            )
+        ''')
+        
+        # Create indexes
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_entity_id ON attributes(entity_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_type ON attributes(type)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_nodes_table_record ON nodes(table_name, record_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_from_node ON edges(from_node_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_to_node ON edges(to_node_id)')
+        
+        # Create FTS5 virtual tables
+        cursor.execute('''
+            CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(
+                searchable_content,
+                content='nodes',
                 content_rowid='rowid'
             )
         ''')
         
-        # Create trigger to keep FTS in sync
         cursor.execute('''
-            CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
-                INSERT INTO memories_fts(rowid, memo_search) VALUES (new.rowid, new.memo_search);
+            CREATE VIRTUAL TABLE IF NOT EXISTS edges_fts USING fts5(
+                searchable_content,
+                content='edges',
+                content_rowid='rowid'
+            )
+        ''')
+        
+        # Create triggers to keep FTS tables in sync
+        # Nodes FTS triggers
+        cursor.execute('''
+            CREATE TRIGGER IF NOT EXISTS nodes_ai AFTER INSERT ON nodes BEGIN
+                INSERT INTO nodes_fts(rowid, searchable_content) VALUES (new.rowid, new.searchable_content);
             END
         ''')
         
         cursor.execute('''
-            CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
-                INSERT INTO memories_fts(memories_fts, rowid, memo_search) VALUES('delete', old.rowid, old.memo_search);
+            CREATE TRIGGER IF NOT EXISTS nodes_ad AFTER DELETE ON nodes BEGIN
+                INSERT INTO nodes_fts(nodes_fts, rowid, searchable_content) VALUES('delete', old.rowid, old.searchable_content);
             END
         ''')
         
         cursor.execute('''
-            CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
-                INSERT INTO memories_fts(memories_fts, rowid, memo_search) VALUES('delete', old.rowid, old.memo_search);
-                INSERT INTO memories_fts(rowid, memo_search) VALUES (new.rowid, new.memo_search);
+            CREATE TRIGGER IF NOT EXISTS nodes_au AFTER UPDATE ON nodes BEGIN
+                INSERT INTO nodes_fts(nodes_fts, rowid, searchable_content) VALUES('delete', old.rowid, old.searchable_content);
+                INSERT INTO nodes_fts(rowid, searchable_content) VALUES (new.rowid, new.searchable_content);
+            END
+        ''')
+        
+        # Edges FTS triggers
+        cursor.execute('''
+            CREATE TRIGGER IF NOT EXISTS edges_ai AFTER INSERT ON edges BEGIN
+                INSERT INTO edges_fts(rowid, searchable_content) VALUES (new.rowid, new.searchable_content);
+            END
+        ''')
+        
+        cursor.execute('''
+            CREATE TRIGGER IF NOT EXISTS edges_ad AFTER DELETE ON edges BEGIN
+                INSERT INTO edges_fts(edges_fts, rowid, searchable_content) VALUES('delete', old.rowid, old.searchable_content);
+            END
+        ''')
+        
+        cursor.execute('''
+            CREATE TRIGGER IF NOT EXISTS edges_au AFTER UPDATE ON edges BEGIN
+                INSERT INTO edges_fts(edges_fts, rowid, searchable_content) VALUES('delete', old.rowid, old.searchable_content);
+                INSERT INTO edges_fts(rowid, searchable_content) VALUES (new.rowid, new.searchable_content);
             END
         ''')
     
     _initialized = True
     return conn
 
-def store_entity(e_id: str, entity_name: str, memo_search: str) -> bool:
+@searchable_builder('entities')
+def build_entity_searchable_content(record_data: dict) -> str:
+    """Build searchable content for an entity node."""
+    content_parts = [record_data.get('name', '')]
+    if record_data.get('description'):
+        content_parts.append(record_data['description'])
+    if record_data.get('tags'):
+        content_parts.append(record_data['tags'])
+    return ' '.join(content_parts)
+
+@searchable_builder('attributes')
+def build_attribute_searchable_content(record_data: dict) -> str:
+    """Build searchable content for an attribute node."""
+    content_parts = [record_data.get('type', '')]
+    if record_data.get('subject'):
+        content_parts.append(record_data['subject'])
+    if record_data.get('detail'):
+        content_parts.append(record_data['detail'])
+    return ' '.join(content_parts)
+
+def create_node(table_name: str, record_id: str, record_data: dict) -> str:
+    """Create a node for any table record using registered builder."""
+    if table_name not in SEARCHABLE_BUILDERS:
+        raise ValueError(f"No searchable builder registered for table: {table_name}")
+    
+    builder = SEARCHABLE_BUILDERS[table_name]
+    searchable_content = builder(record_data)
+    
+    # Create node record
+    node_id = f"N-{uuid.uuid4().hex[:8]}"
+    
+    with transaction() as cursor:
+        cursor.execute('''
+            INSERT INTO nodes (id, table_name, record_id, searchable_content)
+            VALUES (?, ?, ?, ?)
+        ''', (node_id, table_name, record_id, searchable_content))
+    
+    return node_id
+
+def store_entity(e_id: str, entity_name: str, description: str = "", tags: str = "", file_path: str = None) -> bool:
     """Store a master ENTITY record."""
     conn = init_database()
     
     with transaction(conn) as cursor:
-        
-        # Check if E_ID already exists
-        cursor.execute("SELECT id FROM memories WHERE e_id = ? AND type = 'ENTITY'", (e_id,))
+        # Check if entity already exists
+        cursor.execute("SELECT id FROM entities WHERE id = ?", (e_id,))
         if cursor.fetchone():
             raise ValueError(f"Entity ID {e_id} already exists")
         
-        # Generate memory ID
-        cursor.execute("SELECT MAX(CAST(SUBSTR(id, 3) AS INTEGER)) FROM memories WHERE id LIKE 'M-%'")
-        result = cursor.fetchone()[0]
-        count = result if result is not None else 0
-        memory_id = f"M-{count + 1:03d}"
-        
+        # Insert entity record
         cursor.execute('''
-            INSERT INTO memories (id, e_id, type, subject, detail, memo_search)
-            VALUES (?, ?, 'ENTITY', ?, ?, ?)
-        ''', (memory_id, e_id, entity_name, entity_name, memo_search))
-        
-        return True
-
-def store_attribute(e_id: str, attr_type: str, subject: str, detail: str) -> bool:
-    """Store a linked attribute (fact, task, rule, ref)."""
-    init_database()
+            INSERT INTO entities (id, name, description, tags, file_path)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (e_id, entity_name, description, tags, file_path))
     
-    with transaction() as cursor:
-        # Check if E_ID exists
-        cursor.execute("SELECT id FROM memories WHERE e_id = ? AND type = 'ENTITY'", (e_id,))
-        if not cursor.fetchone():
-            raise ValueError(f"Entity ID {e_id} does not exist")
-        
-        # Generate memory ID
-        cursor.execute("SELECT MAX(CAST(SUBSTR(id, 3) AS INTEGER)) FROM memories WHERE id LIKE 'M-%'")
-        result = cursor.fetchone()[0]
-        count = result if result is not None else 0
-        memory_id = f"M-{count + 1:03d}"
-        
-        # Create memo_search content
-        memo_search = f"{attr_type}:{subject}:{detail}"
-        
-        cursor.execute('''
-            INSERT INTO memories (id, e_id, type, date, subject, detail, memo_search)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (memory_id, e_id, attr_type, None, subject, detail, memo_search))
-        
-        return True
+    # Create corresponding node outside the transaction
+    entity_data = {
+        'name': entity_name,
+        'description': description,
+        'tags': tags
+    }
+    create_node('entities', e_id, entity_data)
+    
+    return True
 
-def search_entities(query: str) -> List[Dict]:
-    """Search for entities using FTS or exact E_ID match."""
+def store_attribute(attr_id: str, entity_id: str, attr_type: str, subject: str, detail: str, file_path: str = None) -> bool:
+    """Store a linked attribute (fact, task, rule, ref)."""
+    conn = init_database()
+    
+    with transaction(conn) as cursor:
+        # Check if entity exists
+        cursor.execute("SELECT id FROM entities WHERE id = ?", (entity_id,))
+        if not cursor.fetchone():
+            raise ValueError(f"Entity ID {entity_id} does not exist")
+        
+        # Insert attribute record
+        cursor.execute('''
+            INSERT INTO attributes (id, entity_id, type, subject, detail, file_path)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (attr_id, entity_id, attr_type, subject, detail, file_path))
+    
+    # Create corresponding node outside the transaction
+    attribute_data = {
+        'type': attr_type,
+        'subject': subject,
+        'detail': detail
+    }
+    create_node('attributes', attr_id, attribute_data)
+    
+    return True
+
+def search_nodes(query: str) -> List[Dict]:
+    """Search for nodes using FTS across both nodes and edges."""
     init_database()
     conn = sqlite3.connect(_db_path)
     cursor = conn.cursor()
     
     results = []
-
+    
+    # Search nodes
     cursor.execute('''
-        SELECT DISTINCT e_id, subject, detail
-        FROM memories m
-        JOIN memories_fts fts ON m.rowid = fts.rowid
-        WHERE m.type = 'ENTITY' AND memories_fts MATCH ?
+        SELECT n.id, n.table_name, n.record_id, n.searchable_content
+        FROM nodes n
+        JOIN nodes_fts fts ON n.rowid = fts.rowid
+        WHERE nodes_fts MATCH ?
     ''', (query,))
     
     for row in cursor.fetchall():
         results.append({
-            'e_id': row[0],
-            'subject': row[1],
-            'detail': row[2]
+            'node_id': row[0],
+            'table_name': row[1],
+            'record_id': row[2],
+            'searchable_content': row[3],
+            'source': 'node'
+        })
+    
+    # Search edges
+    cursor.execute('''
+        SELECT e.id, e.from_node_id, e.to_node_id, e.edge_type, e.searchable_content
+        FROM edges e
+        JOIN edges_fts fts ON e.rowid = fts.rowid
+        WHERE edges_fts MATCH ?
+    ''', (query,))
+    
+    for row in cursor.fetchall():
+        results.append({
+            'edge_id': row[0],
+            'from_node_id': row[1],
+            'to_node_id': row[2],
+            'edge_type': row[3],
+            'searchable_content': row[4],
+            'source': 'edge'
         })
     
     conn.close()
     return results
+
+def get_related_nodes(node_id: str, max_depth: int = 1) -> List[Dict]:
+    """Get nodes related to the given node through graph traversal."""
+    init_database()
+    conn = sqlite3.connect(_db_path)
+    cursor = conn.cursor()
+    
+    related_nodes = set()
+    visited = set()
+    current_level = {node_id}
+    
+    for depth in range(max_depth):
+        next_level = set()
+        
+        for current_node in current_level:
+            if current_node in visited:
+                continue
+            visited.add(current_node)
+            
+            # Find outgoing edges
+            cursor.execute('''
+                SELECT to_node_id FROM edges WHERE from_node_id = ?
+            ''', (current_node,))
+            
+            for (to_node,) in cursor.fetchall():
+                related_nodes.add(to_node)
+                next_level.add(to_node)
+            
+            # Find incoming edges
+            cursor.execute('''
+                SELECT from_node_id FROM edges WHERE to_node_id = ?
+            ''', (current_node,))
+            
+            for (from_node,) in cursor.fetchall():
+                related_nodes.add(from_node)
+                next_level.add(from_node)
+        
+        current_level = next_level
+    
+    # Get details for related nodes
+    if not related_nodes:
+        conn.close()
+        return []
+    
+    placeholders = ','.join(['?' for _ in related_nodes])
+    cursor.execute(f'''
+        SELECT id, table_name, record_id, searchable_content
+        FROM nodes
+        WHERE id IN ({placeholders})
+    ''', list(related_nodes))
+    
+    results = []
+    for row in cursor.fetchall():
+        results.append({
+            'node_id': row[0],
+            'table_name': row[1],
+            'record_id': row[2],
+            'searchable_content': row[3]
+        })
+    
+    conn.close()
+    return results
+
+def create_edge(from_node_id: str, to_node_id: str, edge_type: str, searchable_content: str = "") -> str:
+    """Create an edge between two nodes."""
+    conn = init_database()
+    
+    edge_id = f"E-{uuid.uuid4().hex[:8]}"
+    
+    with transaction(conn) as cursor:
+        cursor.execute('''
+            INSERT INTO edges (id, from_node_id, to_node_id, edge_type, searchable_content)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (edge_id, from_node_id, to_node_id, edge_type, searchable_content))
+    
+    return edge_id
+
+def get_record_by_node(node_id: str) -> Dict:
+    """Get the actual record for a given node."""
+    init_database()
+    conn = sqlite3.connect(_db_path)
+    cursor = conn.cursor()
+    
+    # Get node info
+    cursor.execute('''
+        SELECT table_name, record_id FROM nodes WHERE id = ?
+    ''', (node_id,))
+    
+    node_row = cursor.fetchone()
+    if not node_row:
+        conn.close()
+        return None
+    
+    table_name, record_id = node_row
+    
+    # Get record from appropriate table
+    if table_name == 'entities':
+        cursor.execute('''
+            SELECT id, name, description, tags, file_path
+            FROM entities WHERE id = ?
+        ''', (record_id,))
+        
+        row = cursor.fetchone()
+        if row:
+            return {
+                'type': 'entity',
+                'id': row[0],
+                'name': row[1],
+                'description': row[2],
+                'tags': row[3],
+                'file_path': row[4]
+            }
+    
+    elif table_name == 'attributes':
+        cursor.execute('''
+            SELECT id, entity_id, type, subject, detail, file_path
+            FROM attributes WHERE id = ?
+        ''', (record_id,))
+        
+        row = cursor.fetchone()
+        if row:
+            return {
+                'type': 'attribute',
+                'id': row[0],
+                'entity_id': row[1],
+                'attr_type': row[2],
+                'subject': row[3],
+                'detail': row[4],
+                'file_path': row[5]
+            }
+    
+    conn.close()
+    return None
 
 def get_entity_context(e_id: str) -> Dict:
     """Get all linked records for an entity ID."""
@@ -163,8 +442,7 @@ def get_entity_context(e_id: str) -> Dict:
     
     # Get entity info
     cursor.execute('''
-        SELECT subject, detail FROM memories 
-        WHERE e_id = ? AND type = 'ENTITY'
+        SELECT name, description, tags, file_path FROM entities WHERE id = ?
     ''', (e_id,))
     entity_row = cursor.fetchone()
     
@@ -172,21 +450,25 @@ def get_entity_context(e_id: str) -> Dict:
         raise ValueError(f"Entity ID {e_id} not found")
     
     entity_name = entity_row[0]
+    entity_description = entity_row[1]
+    entity_tags = entity_row[2]
+    entity_file_path = entity_row[3]
     
     # Get all linked attributes
     cursor.execute('''
-        SELECT type, subject, detail, date FROM memories 
-        WHERE e_id = ? AND type != 'ENTITY'
+        SELECT id, type, subject, detail, file_path FROM attributes 
+        WHERE entity_id = ?
         ORDER BY type, subject
     ''', (e_id,))
     
     attributes = []
     for row in cursor.fetchall():
         attr = {
-            'type': row[0],
-            'subject': row[1],
-            'detail': row[2],
-            'date': row[3]
+            'id': row[0],
+            'type': row[1],
+            'subject': row[2],
+            'detail': row[3],
+            'file_path': row[4]
         }
         attributes.append(attr)
     
@@ -195,5 +477,45 @@ def get_entity_context(e_id: str) -> Dict:
     return {
         'e_id': e_id,
         'entity_name': entity_name,
+        'entity_description': entity_description,
+        'entity_tags': entity_tags,
+        'entity_file_path': entity_file_path,
         'attributes': attributes
+    }
+
+def search_knowledge_graph(query: str, include_related: bool = True, max_depth: int = 1) -> Dict:
+    """Search the knowledge graph using FTS and optionally include related nodes."""
+    # First, search for matching nodes and edges
+    search_results = search_nodes(query)
+    
+    if not include_related:
+        return {
+            'search_results': search_results,
+            'related_records': []
+        }
+    
+    # Get related nodes for each found node
+    all_related = set()
+    for result in search_results:
+        if result['source'] == 'node':
+            related = get_related_nodes(result['node_id'], max_depth)
+            for rel in related:
+                all_related.add(rel['node_id'])
+        elif result['source'] == 'edge':
+            # For edges, get related nodes from both ends
+            related_from = get_related_nodes(result['from_node_id'], max_depth)
+            related_to = get_related_nodes(result['to_node_id'], max_depth)
+            for rel in related_from + related_to:
+                all_related.add(rel['node_id'])
+    
+    # Get details for all related nodes
+    related_records = []
+    for node_id in all_related:
+        record = get_record_by_node(node_id)
+        if record:
+            related_records.append(record)
+    
+    return {
+        'search_results': search_results,
+        'related_records': related_records
     }

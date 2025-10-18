@@ -1,5 +1,6 @@
 """Input Pydantic models for domain functions."""
 
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -11,15 +12,32 @@ class SearchEntitiesInput(BaseModel):
     query: str
 
 
+class SearchKnowledgeGraphInput(BaseModel):
+    query: str
+    include_related: bool = True
+    max_depth: int = 1
+
+
 class StoreEntityInput(BaseModel):
     e_id: str
-    entity_name: str
-    memo_search: str
+    name: str
+    description: Optional[str] = None
+    tags: Optional[str] = None
+    file_path: Optional[str] = None
 
 
 class StoreAttributeInput(BaseModel):
-    e_id: str
+    attr_id: str
+    entity_id: str
     attr_type: str
     subject: str
     detail: str
+    file_path: Optional[str] = None
+
+
+class CreateEdgeInput(BaseModel):
+    from_node_id: str
+    to_node_id: str
+    edge_type: str
+    searchable_content: Optional[str] = None
 
