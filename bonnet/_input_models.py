@@ -1,5 +1,6 @@
 """Input Pydantic models for domain functions."""
 
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -22,4 +23,24 @@ class StoreAttributeInput(BaseModel):
     attr_type: str
     subject: str
     detail: str
+
+
+class GetGroupContextInput(BaseModel):
+    group_id: str
+
+
+class SearchGroupsInput(BaseModel):
+    query: str
+
+
+class StoreGroupInput(BaseModel):
+    group_id: str
+    group_name: str
+    description: Optional[str] = None
+
+
+class AddEntityToGroupInput(BaseModel):
+    group_id: str
+    e_id: str
+    relationship_type: Optional[str] = None
 

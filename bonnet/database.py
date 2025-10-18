@@ -43,9 +43,37 @@ def init_database():
             )
         ''')
         
+        # Create groups table for entity groupings
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS groups (
+                group_id TEXT PRIMARY KEY,
+                group_name TEXT NOT NULL,
+                description TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Create group_entities table for many-to-many relationship between groups and entities
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS group_entities (
+                group_id TEXT,
+                e_id TEXT,
+                relationship_type TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (group_id, e_id),
+                FOREIGN KEY (group_id) REFERENCES groups(group_id),
+                FOREIGN KEY (e_id) REFERENCES memories(e_id)
+            )
+        ''')
+        
         # Create index on e_id
         cursor.execute('''
             CREATE INDEX IF NOT EXISTS idx_e_id ON memories(e_id)
+        ''')
+        
+        # Create index on group_id
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_group_id ON group_entities(group_id)
         ''')
         
         # Create FTS5 virtual table for search
@@ -197,3 +225,149 @@ def get_entity_context(e_id: str) -> Dict:
         'entity_name': entity_name,
         'attributes': attributes
     }
+
+
+def store_group(group_id: str, group_name: str, description: str = None) -> bool:
+    """Store a group record."""
+    init_database()
+    
+    with transaction() as cursor:
+        # Check if group_id already exists
+        cursor.execute("SELECT group_id FROM groups WHERE group_id = ?", (group_id,))
+        if cursor.fetchone():
+            raise ValueError(f"Group ID {group_id} already exists")
+        
+        cursor.execute('''
+            INSERT INTO groups (group_id, group_name, description)
+            VALUES (?, ?, ?)
+        ''', (group_id, group_name, description))
+        
+        return True
+
+
+def add_entity_to_group(group_id: str, e_id: str, relationship_type: str = None) -> bool:
+    """Add an entity to a group with an optional relationship type."""
+    init_database()
+    
+    with transaction() as cursor:
+        # Check if group exists
+        cursor.execute("SELECT group_id FROM groups WHERE group_id = ?", (group_id,))
+        if not cursor.fetchone():
+            raise ValueError(f"Group ID {group_id} does not exist")
+        
+        # Check if entity exists
+        cursor.execute("SELECT e_id FROM memories WHERE e_id = ? AND type = 'ENTITY'", (e_id,))
+        if not cursor.fetchone():
+            raise ValueError(f"Entity ID {e_id} does not exist")
+        
+        # Check if relationship already exists
+        cursor.execute("SELECT group_id FROM group_entities WHERE group_id = ? AND e_id = ?", (group_id, e_id))
+        if cursor.fetchone():
+            raise ValueError(f"Entity {e_id} is already in group {group_id}")
+        
+        cursor.execute('''
+            INSERT INTO group_entities (group_id, e_id, relationship_type)
+            VALUES (?, ?, ?)
+        ''', (group_id, e_id, relationship_type))
+        
+        return True
+
+
+def get_group_context(group_id: str) -> Dict:
+    """Get all entities and nested groups for a group ID."""
+    init_database()
+    conn = sqlite3.connect(_db_path)
+    cursor = conn.cursor()
+    
+    # Get group info
+    cursor.execute('''
+        SELECT group_name, description FROM groups 
+        WHERE group_id = ?
+    ''', (group_id,))
+    group_row = cursor.fetchone()
+    
+    if not group_row:
+        raise ValueError(f"Group ID {group_id} not found")
+    
+    group_name, description = group_row
+    
+    # Get all entities in this group
+    cursor.execute('''
+        SELECT ge.e_id, ge.relationship_type, m.subject, m.detail
+        FROM group_entities ge
+        JOIN memories m ON ge.e_id = m.e_id
+        WHERE ge.group_id = ? AND m.type = 'ENTITY'
+        ORDER BY ge.relationship_type, m.subject
+    ''', (group_id,))
+    
+    entities = []
+    entity_references = []
+    
+    for row in cursor.fetchall():
+        e_id, relationship_type, entity_name, detail = row
+        
+        # Get attributes for this entity
+        cursor.execute('''
+            SELECT type, subject, detail, date FROM memories 
+            WHERE e_id = ? AND type != 'ENTITY'
+            ORDER BY type, subject
+        ''', (e_id,))
+        
+        attributes = []
+        for attr_row in cursor.fetchall():
+            attr = {
+                'type': attr_row[0],
+                'subject': attr_row[1],
+                'detail': attr_row[2],
+                'date': attr_row[3]
+            }
+            attributes.append(attr)
+        
+        entity = {
+            'e_id': e_id,
+            'entity_name': entity_name,
+            'attributes': attributes
+        }
+        entities.append(entity)
+        
+        entity_ref = {
+            'e_id': e_id,
+            'relationship_type': relationship_type
+        }
+        entity_references.append(entity_ref)
+    
+    conn.close()
+    
+    return {
+        'group_id': group_id,
+        'group_name': group_name,
+        'description': description,
+        'entities': entities,
+        'entity_references': entity_references
+    }
+
+
+def search_groups(query: str) -> List[Dict]:
+    """Search for groups by name or description."""
+    init_database()
+    conn = sqlite3.connect(_db_path)
+    cursor = conn.cursor()
+    
+    results = []
+    
+    cursor.execute('''
+        SELECT group_id, group_name, description
+        FROM groups
+        WHERE group_name LIKE ? OR description LIKE ?
+        ORDER BY group_name
+    ''', (f'%{query}%', f'%{query}%'))
+    
+    for row in cursor.fetchall():
+        results.append({
+            'group_id': row[0],
+            'group_name': row[1],
+            'description': row[2]
+        })
+    
+    conn.close()
+    return results
