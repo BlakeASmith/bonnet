@@ -10,7 +10,7 @@ class Assembler(Protocol):
 
 
 def xml_assembler() -> Assembler:
-    """Create an XML assembler that converts ContextTree to XML format."""
+    """Create an XML assembler that converts ContextTree to compact knowledge graph XML format."""
     
     def assemble_entity(entity: Entity) -> str:
         # Group attributes by type
@@ -33,41 +33,27 @@ def xml_assembler() -> Assembler:
     def assemble_attribute(attribute: Attribute) -> str:
         return f"<attribute id=\"{attribute.id}\" type=\"{attribute.type}\">{attribute.subject}:{attribute.detail}</attribute>"
     
-    def assemble_search_result(result: SearchResult) -> str:
-        if result.source == 'node':
-            return f"<search_result type=\"node\" node_id=\"{result.node_id}\" table=\"{result.table_name}\">{result.searchable_content}</search_result>"
-        else:  # edge
-            return f"<search_result type=\"edge\" edge_id=\"{result.edge_id}\" from=\"{result.from_node_id}\" to=\"{result.to_node_id}\" edge_type=\"{result.edge_type}\">{result.searchable_content}</search_result>"
     
     def assemble(context: ContextTree) -> str:
-        lines = ["<context>"]
+        lines = ["<knowledge_graph>"]
         
-        # Add entities
+        # Add entities from the context
         if context.entities:
             for entity in context.entities:
                 if isinstance(entity, Entity):
                     for line in assemble_entity(entity).splitlines():
                         lines.append(f"  {line}")
         
-        # Add search results if present
-        if context.search_results:
-            lines.append("  <search_results>")
-            for result in context.search_results:
-                lines.append(f"    {assemble_search_result(result)}")
-            lines.append("  </search_results>")
-        
-        # Add related records if present
+        # Add related records as entities and attributes
         if context.related_records:
-            lines.append("  <related_records>")
             for record in context.related_records:
                 if isinstance(record, Entity):
                     for line in assemble_entity(record).splitlines():
-                        lines.append(f"    {line}")
+                        lines.append(f"  {line}")
                 elif isinstance(record, Attribute):
-                    lines.append(f"    {assemble_attribute(record)}")
-            lines.append("  </related_records>")
+                    lines.append(f"  {assemble_attribute(record)}")
         
-        lines.append("</context>")
+        lines.append("</knowledge_graph>")
         return '\n'.join(lines)
     
     return assemble
