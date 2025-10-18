@@ -8,14 +8,16 @@ _db_path = "bonnet.db"
 _initialized = False
 
 @contextmanager
-def transaction():
+def transaction(conn: sqlite3.Connection = None, rollback: bool = True):
     """Context manager for database transactions"""
-    conn = sqlite3.connect(_db_path)
+    if conn is None:
+        conn = sqlite3.connect(_db_path)
     try:
-        yield conn
+        yield conn.cursor()
         conn.commit()
     except Exception:
-        conn.rollback()
+        if rollback:
+            conn.rollback()
         raise
     finally:
         conn.close()
@@ -27,65 +29,62 @@ def init_database():
         return
         
     conn = sqlite3.connect(_db_path)
-    cursor = conn.cursor()
+    with transaction(conn, rollback=False) as cursor:
+        # Create memories table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS memories (
+                id TEXT PRIMARY KEY,
+                e_id TEXT,
+                type TEXT,
+                date TEXT,
+                subject TEXT,
+                detail TEXT,
+                memo_search TEXT
+            )
+        ''')
+        
+        # Create index on e_id
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_e_id ON memories(e_id)
+        ''')
+        
+        # Create FTS5 virtual table for search
+        cursor.execute('''
+            CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
+                memo_search,
+                content='memories',
+                content_rowid='rowid'
+            )
+        ''')
+        
+        # Create trigger to keep FTS in sync
+        cursor.execute('''
+            CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
+                INSERT INTO memories_fts(rowid, memo_search) VALUES (new.rowid, new.memo_search);
+            END
+        ''')
+        
+        cursor.execute('''
+            CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
+                INSERT INTO memories_fts(memories_fts, rowid, memo_search) VALUES('delete', old.rowid, old.memo_search);
+            END
+        ''')
+        
+        cursor.execute('''
+            CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
+                INSERT INTO memories_fts(memories_fts, rowid, memo_search) VALUES('delete', old.rowid, old.memo_search);
+                INSERT INTO memories_fts(rowid, memo_search) VALUES (new.rowid, new.memo_search);
+            END
+        ''')
     
-    # Create memories table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS memories (
-            id TEXT PRIMARY KEY,
-            e_id TEXT,
-            type TEXT,
-            date TEXT,
-            subject TEXT,
-            detail TEXT,
-            memo_search TEXT
-        )
-    ''')
-    
-    # Create index on e_id
-    cursor.execute('''
-        CREATE INDEX IF NOT EXISTS idx_e_id ON memories(e_id)
-    ''')
-    
-    # Create FTS5 virtual table for search
-    cursor.execute('''
-        CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
-            memo_search,
-            content='memories',
-            content_rowid='rowid'
-        )
-    ''')
-    
-    # Create trigger to keep FTS in sync
-    cursor.execute('''
-        CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
-            INSERT INTO memories_fts(rowid, memo_search) VALUES (new.rowid, new.memo_search);
-        END
-    ''')
-    
-    cursor.execute('''
-        CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
-            INSERT INTO memories_fts(memories_fts, rowid, memo_search) VALUES('delete', old.rowid, old.memo_search);
-        END
-    ''')
-    
-    cursor.execute('''
-        CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
-            INSERT INTO memories_fts(memories_fts, rowid, memo_search) VALUES('delete', old.rowid, old.memo_search);
-            INSERT INTO memories_fts(rowid, memo_search) VALUES (new.rowid, new.memo_search);
-        END
-    ''')
-    
-    conn.commit()
-    conn.close()
     _initialized = True
+    return conn
 
 def store_entity(e_id: str, entity_name: str, memo_search: str) -> bool:
     """Store a master ENTITY record."""
-    init_database()
+    conn = init_database()
     
-    with transaction() as conn:
-        cursor = conn.cursor()
+    with transaction(conn) as cursor:
         
         # Check if E_ID already exists
         cursor.execute("SELECT id FROM memories WHERE e_id = ? AND type = 'ENTITY'", (e_id,))
@@ -105,13 +104,11 @@ def store_entity(e_id: str, entity_name: str, memo_search: str) -> bool:
         
         return True
 
-def store_attribute(e_id: str, attr_type: str, subject: str, detail: str, date: str = None) -> bool:
+def store_attribute(e_id: str, attr_type: str, subject: str, detail: str) -> bool:
     """Store a linked attribute (fact, task, rule, ref)."""
     init_database()
     
-    with transaction() as conn:
-        cursor = conn.cursor()
-        
+    with transaction() as cursor:
         # Check if E_ID exists
         cursor.execute("SELECT id FROM memories WHERE e_id = ? AND type = 'ENTITY'", (e_id,))
         if not cursor.fetchone():
@@ -139,36 +136,21 @@ def search_entities(query: str) -> List[Dict]:
     conn = sqlite3.connect(_db_path)
     cursor = conn.cursor()
     
-    # First try exact E_ID match
+    results = []
+
     cursor.execute('''
-        SELECT e_id, subject, detail
-        FROM memories
-        WHERE type = 'ENTITY' AND e_id = ?
+        SELECT DISTINCT e_id, subject, detail
+        FROM memories m
+        JOIN memories_fts fts ON m.rowid = fts.rowid
+        WHERE m.type = 'ENTITY' AND memories_fts MATCH ?
     ''', (query,))
     
-    results = []
     for row in cursor.fetchall():
         results.append({
             'e_id': row[0],
             'subject': row[1],
             'detail': row[2]
         })
-    
-    # If no exact match, try FTS search
-    if not results:
-        cursor.execute('''
-            SELECT DISTINCT e_id, subject, detail
-            FROM memories m
-            JOIN memories_fts fts ON m.rowid = fts.rowid
-            WHERE m.type = 'ENTITY' AND memories_fts MATCH ?
-        ''', (query,))
-        
-        for row in cursor.fetchall():
-            results.append({
-                'e_id': row[0],
-                'subject': row[1],
-                'detail': row[2]
-            })
     
     conn.close()
     return results

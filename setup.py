@@ -29,6 +29,7 @@ setup(
     install_requires=[
         "click>=8.0.0",
         "python-dateutil>=2.8.0",
+        "pydantic>=2.0.0",
     ],
     entry_points={
         "console_scripts": [
