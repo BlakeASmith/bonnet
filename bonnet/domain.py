@@ -12,6 +12,18 @@ from ._input_models import (
 from . import database
 
 
+def generate_topic_id() -> str:
+    """
+    Generate a simple topic ID with prefix and number.
+    
+    Returns:
+        A simple ID like "T1", "T2", "T3", etc.
+    """
+    # Get next available number for topic prefix
+    next_number = database.get_next_id_number("T")
+    return f"T{next_number}"
+
+
 def search(input: SearchInput) -> ContextTree:
     """
     Search the knowledge graph using FTS and optionally include related nodes.
@@ -103,20 +115,21 @@ def search(input: SearchInput) -> ContextTree:
         )
 
 
-def store_entity(input: StoreEntityInput) -> bool:
+def store_entity(input: StoreEntityInput) -> str:
     """
     Store a master ENTITY record.
     
     Args:
-        input: StoreEntityInput containing e_id and name
+        input: StoreEntityInput containing e_id (optional) and name
         
     Returns:
-        True if successful
+        The entity ID used (either provided or generated)
     """
-    return database.store_entity(
-        input.e_id, 
-        input.name
-    )
+    # Generate simple topic ID if not provided
+    e_id = input.e_id if input.e_id is not None else generate_topic_id()
+    
+    database.store_entity(e_id, input.name)
+    return e_id
 
 
 def store_attribute(input: StoreAttributeInput) -> bool:

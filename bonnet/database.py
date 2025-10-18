@@ -94,6 +94,14 @@ def init_database():
                 )
             ''')
             
+            # Create id_counters table to track ID numbers for each prefix
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS id_counters (
+                    prefix TEXT PRIMARY KEY,
+                    next_number INTEGER NOT NULL DEFAULT 1
+                )
+            ''')
+            
             # Create indexes
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_entities_node_id ON entities(node_id)')
@@ -201,7 +209,7 @@ def create_node(table_name: str, record_id: str, record_data: dict) -> str:
     
     return node_id
 
-def store_entity(e_id: str, entity_name: str) -> bool:
+def store_entity(e_id: str, entity_name: str) -> None:
     """Store a master ENTITY record."""
     init_database()
     
@@ -222,8 +230,34 @@ def store_entity(e_id: str, entity_name: str) -> bool:
             INSERT INTO entities (id, name, node_id)
             VALUES (?, ?, ?)
         ''', (e_id, entity_name, node_id))
+
+def entity_exists(e_id: str) -> bool:
+    """Check if an entity with the given ID already exists."""
+    init_database()
     
-    return True
+    with transaction() as cursor:
+        cursor.execute("SELECT id FROM entities WHERE id = ?", (e_id,))
+        return cursor.fetchone() is not None
+
+def get_next_id_number(prefix: str) -> int:
+    """Get the next available ID number for a given prefix."""
+    init_database()
+    
+    with transaction() as cursor:
+        # Get or create counter record for this prefix
+        cursor.execute("SELECT next_number FROM id_counters WHERE prefix = ?", (prefix,))
+        row = cursor.fetchone()
+        
+        if row:
+            # Update existing counter
+            next_number = row[0]
+            cursor.execute("UPDATE id_counters SET next_number = ? WHERE prefix = ?", (next_number + 1, prefix))
+        else:
+            # Create new counter starting at 1
+            next_number = 1
+            cursor.execute("INSERT INTO id_counters (prefix, next_number) VALUES (?, ?)", (prefix, 2))
+        
+        return next_number
 
 def store_attribute(attr_id: str, attr_type: str, subject: str, detail: str) -> bool:
     """Store an attribute (fact, task, rule, ref) and link it to the entity."""

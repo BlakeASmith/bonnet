@@ -25,14 +25,14 @@ def cli():
     pass
 
 @cli.command()
-@click.option('--id', required=True, help='Unique Entity ID')
+@click.option('--id', help='Unique Entity ID (auto-generated if not provided)')
 @click.argument('text')
 @handle_errors
 def topic(id, text):
     """Store a master ENTITY record"""
     input_model = StoreEntityInput(e_id=id, name=text)
-    domain.store_entity(input_model)
-    click.echo(f"Stored topic '{text}' with ID {id}")
+    actual_id = domain.store_entity(input_model)
+    click.echo(f"Stored topic '{text}' with ID {actual_id}")
 
 @cli.command()
 @click.option('--about', required=True, help='Entity ID to link to')
