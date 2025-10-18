@@ -3,8 +3,7 @@
 from ._models import Attribute, Entity, ContextTree, SearchResult
 from ._input_models import (
     GetEntityContextInput,
-    SearchEntitiesInput,
-    SearchKnowledgeGraphInput,
+    SearchInput,
     StoreEntityInput,
     StoreAttributeInput,
     CreateEdgeInput,
@@ -46,33 +45,13 @@ def get_entity_context(input: GetEntityContextInput) -> ContextTree:
     return ContextTree(entities=[entity])
 
 
-def search_entities(input: SearchEntitiesInput) -> ContextTree:
-    """
-    Search for entities matching the query using the old search method.
-    This is kept for backward compatibility.
-    
-    Args:
-        input: SearchEntitiesInput containing query string
-        
-    Returns:
-        ContextTree containing all matching entities
-    """
-    # For now, use the knowledge graph search and filter for entities only
-    kg_results = search_knowledge_graph(SearchKnowledgeGraphInput(query=input.query))
-    
-    entities = []
-    for record in kg_results.related_records:
-        if isinstance(record, Entity):
-            entities.append(record)
-    
-    return ContextTree(entities=entities)
 
-def search_knowledge_graph(input: SearchKnowledgeGraphInput) -> ContextTree:
+def search(input: SearchInput) -> ContextTree:
     """
     Search the knowledge graph using FTS and optionally include related nodes.
     
     Args:
-        input: SearchKnowledgeGraphInput containing query, include_related, and max_depth
+        input: SearchInput containing query, include_related, and max_depth
         
     Returns:
         ContextTree containing search results and related records

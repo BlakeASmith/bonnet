@@ -8,11 +8,7 @@ class GetEntityContextInput(BaseModel):
     e_id: str
 
 
-class SearchEntitiesInput(BaseModel):
-    query: str
-
-
-class SearchKnowledgeGraphInput(BaseModel):
+class SearchInput(BaseModel):
     query: str
     include_related: bool = True
     max_depth: int = 1
