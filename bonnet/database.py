@@ -94,6 +94,14 @@ def init_database():
                 )
             ''')
             
+            # Create id_counters table to track ID numbers for each prefix
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS id_counters (
+                    prefix TEXT PRIMARY KEY,
+                    next_number INTEGER NOT NULL DEFAULT 1
+                )
+            ''')
+            
             # Create indexes
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_entities_node_id ON entities(node_id)')
@@ -231,28 +239,25 @@ def entity_exists(e_id: str) -> bool:
         cursor.execute("SELECT id FROM entities WHERE id = ?", (e_id,))
         return cursor.fetchone() is not None
 
-def get_max_topic_number() -> int:
-    """Get the highest topic number currently in use."""
+def get_next_id_number(prefix: str) -> int:
+    """Get the next available ID number for a given prefix."""
     init_database()
     
     with transaction() as cursor:
-        # Find all topic IDs that start with 'T' followed by a number
-        cursor.execute("SELECT id FROM entities WHERE id LIKE 'T%'")
-        rows = cursor.fetchall()
+        # Get or create counter record for this prefix
+        cursor.execute("SELECT next_number FROM id_counters WHERE prefix = ?", (prefix,))
+        row = cursor.fetchone()
         
-        max_number = 0
-        for row in rows:
-            topic_id = row[0]
-            # Extract number from T1, T2, etc.
-            if topic_id.startswith('T') and len(topic_id) > 1:
-                try:
-                    number = int(topic_id[1:])
-                    max_number = max(max_number, number)
-                except ValueError:
-                    # Skip if not a valid number
-                    continue
+        if row:
+            # Update existing counter
+            next_number = row[0]
+            cursor.execute("UPDATE id_counters SET next_number = ? WHERE prefix = ?", (next_number + 1, prefix))
+        else:
+            # Create new counter starting at 1
+            next_number = 1
+            cursor.execute("INSERT INTO id_counters (prefix, next_number) VALUES (?, ?)", (prefix, 2))
         
-        return max_number
+        return next_number
 
 def store_attribute(attr_id: str, attr_type: str, subject: str, detail: str) -> bool:
     """Store an attribute (fact, task, rule, ref) and link it to the entity."""

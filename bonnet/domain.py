@@ -19,9 +19,8 @@ def generate_topic_id() -> str:
     Returns:
         A simple ID like "T1", "T2", "T3", etc.
     """
-    # Find the highest existing topic number
-    max_number = database.get_max_topic_number()
-    next_number = max_number + 1
+    # Get next available number for topic prefix
+    next_number = database.get_next_id_number("T")
     return f"T{next_number}"
 
 
