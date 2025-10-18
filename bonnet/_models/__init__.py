@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 from pydantic import BaseModel, Field
 
@@ -16,5 +16,5 @@ class Entity(BaseModel):
 
 
 class ContextTree(BaseModel):
-    entities: List[Entity | "ContextTree"] = Field(default_factory=list)
+    entities: List[Union[Entity, "ContextTree"]] = Field(default_factory=list)
 

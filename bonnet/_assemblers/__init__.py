@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from _models import Entity, ContextTree
+from .._models import Entity, ContextTree
 
 
 class Assembler(Protocol):
@@ -14,8 +14,8 @@ def xml_assembler() -> Assembler:
     
     def assemble_entity(entity: Entity) -> str:
         lines = [
-            f"<entity>",
-            f"{entity.e_id}:{entity.entity_name}",
+            f"<entity id=\"{entity.e_id}\">",
+            f"{entity.entity_name}",
             *[f"{x.type}:{x.subject}:{x.detail}" for x in entity.attributes],
             f"</entity>"
         ]
