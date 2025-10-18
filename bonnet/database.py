@@ -1,10 +1,24 @@
 import sqlite3
 import os
+from contextlib import contextmanager
 from typing import List, Dict, Optional, Tuple
 
 # Global database connection
 _db_path = "bonnet.db"
 _initialized = False
+
+@contextmanager
+def transaction():
+    """Context manager for database transactions"""
+    conn = sqlite3.connect(_db_path)
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 def init_database():
     """Initialize the database with the memories table and FTS5 index."""
@@ -69,10 +83,10 @@ def init_database():
 def store_entity(e_id: str, entity_name: str, memo_search: str) -> bool:
     """Store a master ENTITY record."""
     init_database()
-    conn = sqlite3.connect(_db_path)
-    cursor = conn.cursor()
     
-    try:
+    with transaction() as conn:
+        cursor = conn.cursor()
+        
         # Check if E_ID already exists
         cursor.execute("SELECT id FROM memories WHERE e_id = ? AND type = 'ENTITY'", (e_id,))
         if cursor.fetchone():
@@ -89,26 +103,19 @@ def store_entity(e_id: str, entity_name: str, memo_search: str) -> bool:
             VALUES (?, ?, 'ENTITY', ?, ?, ?)
         ''', (memory_id, e_id, entity_name, entity_name, memo_search))
         
-        conn.commit()
         return True
-    except Exception as e:
-        conn.rollback()
-        raise e
-    finally:
-        conn.close()
 
 def store_attribute(e_id: str, attr_type: str, subject: str, detail: str, date: str = None) -> bool:
     """Store a linked attribute (fact, task, rule, ref)."""
     init_database()
-    conn = sqlite3.connect(_db_path)
-    cursor = conn.cursor()
     
-    try:
+    with transaction() as conn:
+        cursor = conn.cursor()
+        
         # Check if E_ID exists
         cursor.execute("SELECT id FROM memories WHERE e_id = ? AND type = 'ENTITY'", (e_id,))
         if not cursor.fetchone():
             raise ValueError(f"Entity ID {e_id} does not exist")
-        
         
         # Generate memory ID
         cursor.execute("SELECT MAX(CAST(SUBSTR(id, 3) AS INTEGER)) FROM memories WHERE id LIKE 'M-%'")
@@ -124,13 +131,7 @@ def store_attribute(e_id: str, attr_type: str, subject: str, detail: str, date: 
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', (memory_id, e_id, attr_type, None, subject, detail, memo_search))
         
-        conn.commit()
         return True
-    except Exception as e:
-        conn.rollback()
-        raise e
-    finally:
-        conn.close()
 
 def search_entities(query: str) -> List[Dict]:
     """Search for entities using FTS or exact E_ID match."""
