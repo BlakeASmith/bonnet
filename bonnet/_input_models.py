@@ -15,7 +15,7 @@ class SearchInput(BaseModel):
 
 
 class StoreEntityInput(BaseModel):
-    e_id: str
+    e_id: Optional[str] = None
     name: str
 
 

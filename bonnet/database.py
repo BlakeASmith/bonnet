@@ -201,7 +201,7 @@ def create_node(table_name: str, record_id: str, record_data: dict) -> str:
     
     return node_id
 
-def store_entity(e_id: str, entity_name: str) -> bool:
+def store_entity(e_id: str, entity_name: str) -> None:
     """Store a master ENTITY record."""
     init_database()
     
@@ -222,8 +222,6 @@ def store_entity(e_id: str, entity_name: str) -> bool:
             INSERT INTO entities (id, name, node_id)
             VALUES (?, ?, ?)
         ''', (e_id, entity_name, node_id))
-    
-    return True
 
 def store_attribute(attr_id: str, attr_type: str, subject: str, detail: str) -> bool:
     """Store an attribute (fact, task, rule, ref) and link it to the entity."""

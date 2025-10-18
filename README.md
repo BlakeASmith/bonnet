@@ -25,7 +25,11 @@ The CLI can be run in two ways:
 
 ### Store a topic (master ENTITY record)
 ```bash
+# With explicit ID
 bonnet topic --id M1 "The Meaning of Life"
+
+# With auto-generated ID
+bonnet topic "The Meaning of Life"
 ```
 
 ### Store attributes
