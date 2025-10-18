@@ -76,12 +76,12 @@ def link(from_type, from_identifier, to_type, to_identifier, edge_type, content)
         link --from-type entity --to-type entity --from T1 --to T2
     """
     # Resolve source record
-    from_id = find_record_with_feedback(from_identifier, from_type)
+    from_id = find_record_with_feedback(from_identifier)
     if not from_id:
         return
     
     # Resolve target record
-    to_id = find_record_with_feedback(to_identifier, to_type)
+    to_id = find_record_with_feedback(to_identifier)
     if not to_id:
         return
     
@@ -113,16 +113,14 @@ def context(about):
     display_context(context_tree)
 
 @cli.command()
-@click.option('--type', 'record_type', type=click.Choice(['entity', 'file', 'attribute']), help='Filter by record type')
 @click.option('--limit', default=10, help='Maximum number of results to show (default: 10)')
 @click.argument('query')
 @handle_errors
-def search(record_type, limit, query):
-    """Search for records by content
+def search(limit, query):
+    """Search for records by content across all record types
     
     Examples:
-        search "car"                    # Search all record types
-        search --type entity "vehicle"  # Search only entities
-        search --type attribute "color" # Search only attributes
+        search "car"      # Search for records containing "car"
+        search "color"    # Search for records containing "color"
     """
-    search_and_display_records(query, record_type, limit)
+    search_and_display_records(query, limit)

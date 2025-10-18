@@ -265,32 +265,30 @@ def link(input: LinkInput) -> str:
     )
 
 
-def search_records(query: str, record_type: str = None) -> List[Dict]:
+def search_records(query: str) -> List[Dict]:
     """
     Search for records by content.
     
     Args:
         query: Search query string
-        record_type: Optional filter for specific record type
         
     Returns:
         List of matching records
     """
-    return database.search_records_by_content(query, record_type)
+    return database.search_records_by_content(query)
 
 
-def find_record(query: str, record_type: str = None) -> Optional[Dict]:
+def find_record(query: str) -> Optional[Dict]:
     """
     Find a single record by content.
     
     Args:
         query: Search query string
-        record_type: Optional filter for specific record type
         
     Returns:
         Single matching record or None
     """
-    return database.find_single_record(query, record_type)
+    return database.find_single_record(query)
 
 
 def get_record(record_id: str, record_type: str) -> Optional[Dict]:
@@ -307,23 +305,24 @@ def get_record(record_id: str, record_type: str) -> Optional[Dict]:
     return database.get_record_by_id_and_type(record_id, record_type)
 
 
-def resolve_record_identifier(identifier: str, record_type: str = None) -> Optional[Dict]:
+def resolve_record_identifier(identifier: str) -> Optional[Dict]:
     """
     Resolve a record identifier that could be either an ID or a search query.
     
     Args:
         identifier: Either a record ID or search query
-        record_type: Optional filter for specific record type
         
     Returns:
         Record data or None if not found
     """
     # First try to get by ID if it looks like an ID
-    if record_type and (identifier.startswith(('T', 'A', 'F')) or '-' in identifier):
-        record = get_record(identifier, record_type)
-        if record:
-            return record
+    if identifier.startswith(('T', 'A', 'F')) or '-' in identifier:
+        # Try all record types to find the ID
+        for record_type in ['entity', 'attribute', 'file']:
+            record = get_record(identifier, record_type)
+            if record:
+                return record
     
     # If not found by ID or doesn't look like an ID, try searching
-    return find_record(identifier, record_type)
+    return find_record(identifier)
 

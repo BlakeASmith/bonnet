@@ -19,36 +19,34 @@ def handle_errors(func):
     return wrapper
 
 
-def resolve_record_identifier(identifier: str, record_type: str = None) -> Optional[Dict]:
+def resolve_record_identifier(identifier: str) -> Optional[Dict]:
     """
     Resolve a record identifier that could be either an ID or a search query.
     
     Args:
         identifier: Either a record ID or search query
-        record_type: Optional filter for specific record type
         
     Returns:
         Record data or None if not found
     """
-    return domain.resolve_record_identifier(identifier, record_type)
+    return domain.resolve_record_identifier(identifier)
 
 
-def find_record_with_feedback(identifier: str, record_type: str = None) -> Optional[str]:
+def find_record_with_feedback(identifier: str) -> Optional[str]:
     """
     Find a record and return its ID, with user feedback for ambiguous results.
     
     Args:
         identifier: Either a record ID or search query
-        record_type: Optional filter for specific record type
         
     Returns:
         Record ID if found, None otherwise
     """
-    record = resolve_record_identifier(identifier, record_type)
+    record = resolve_record_identifier(identifier)
     
     if not record:
         # Try searching for similar records
-        search_results = domain.search_records(identifier, record_type)
+        search_results = domain.search_records(identifier)
         if search_results:
             click.echo(f"No exact match found for '{identifier}'. Did you mean one of these?", err=True)
             for i, result in enumerate(search_results[:5], 1):  # Show top 5 results
@@ -61,16 +59,15 @@ def find_record_with_feedback(identifier: str, record_type: str = None) -> Optio
     return record['id']
 
 
-def search_and_display_records(query: str, record_type: str = None, limit: int = 10):
+def search_and_display_records(query: str, limit: int = 10):
     """
     Search for records and display them in a user-friendly format.
     
     Args:
         query: Search query
-        record_type: Optional filter for specific record type
         limit: Maximum number of results to display
     """
-    results = domain.search_records(query, record_type)
+    results = domain.search_records(query)
     
     if not results:
         click.echo(f"No records found matching '{query}'")
