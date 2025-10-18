@@ -1,5 +1,4 @@
 from .cli import cli
-from .database import BonnetDB
 
 __version__ = "1.0.0"
 __author__ = "Blake Smith"
