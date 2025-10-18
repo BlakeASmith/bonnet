@@ -56,6 +56,7 @@ Ref:M1:The hitchhikers guide to the galaxy (ID: R1)
 - SQLite3 database with FTS5 full-text search
 - Entity-based knowledge organization
 - Support for facts and references
+- Simplified data model (no task/rule types)
 - Disambiguation for multiple search results
 - Compressed XML context generation
 - Error handling and validation

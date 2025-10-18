@@ -109,9 +109,6 @@ def store_attribute(e_id: str, attr_type: str, subject: str, detail: str, date: 
         if not cursor.fetchone():
             raise ValueError(f"Entity ID {e_id} does not exist")
         
-        # Validate date for TASK type
-        if attr_type == 'TASK' and not date:
-            raise ValueError("TASK type requires --date parameter")
         
         # Generate memory ID
         cursor.execute("SELECT MAX(CAST(SUBSTR(id, 3) AS INTEGER)) FROM memories WHERE id LIKE 'M-%'")
@@ -121,13 +118,11 @@ def store_attribute(e_id: str, attr_type: str, subject: str, detail: str, date: 
         
         # Create memo_search content
         memo_search = f"{attr_type}:{subject}:{detail}"
-        if date:
-            memo_search += f":{date}"
         
         cursor.execute('''
             INSERT INTO memories (id, e_id, type, date, subject, detail, memo_search)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (memory_id, e_id, attr_type, date, subject, detail, memo_search))
+        ''', (memory_id, e_id, attr_type, None, subject, detail, memo_search))
         
         conn.commit()
         return True
