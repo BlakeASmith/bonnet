@@ -48,7 +48,9 @@ def init_database():
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entities (
                 id TEXT PRIMARY KEY,
-                name TEXT NOT NULL
+                name TEXT NOT NULL,
+                node_id TEXT NOT NULL,
+                FOREIGN KEY (node_id) REFERENCES nodes(id)
             )
         ''')
         
@@ -58,7 +60,9 @@ def init_database():
                 id TEXT PRIMARY KEY,
                 type TEXT NOT NULL,
                 subject TEXT,
-                detail TEXT
+                detail TEXT,
+                node_id TEXT NOT NULL,
+                FOREIGN KEY (node_id) REFERENCES nodes(id)
             )
         ''')
         
@@ -89,7 +93,9 @@ def init_database():
         
         # Create indexes
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_entities_node_id ON entities(node_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_type ON attributes(type)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_node_id ON attributes(node_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_nodes_table_record ON nodes(table_name, record_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_from_node ON edges(from_node_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_to_node ON edges(to_node_id)')
@@ -193,23 +199,23 @@ def store_entity(e_id: str, entity_name: str) -> bool:
     """Store a master ENTITY record."""
     conn = init_database()
     
+    # First create the node
+    entity_data = {
+        'name': entity_name
+    }
+    node_id = create_node('entities', e_id, entity_data)
+    
     with transaction(conn) as cursor:
         # Check if entity already exists
         cursor.execute("SELECT id FROM entities WHERE id = ?", (e_id,))
         if cursor.fetchone():
             raise ValueError(f"Entity ID {e_id} already exists")
         
-        # Insert entity record
+        # Insert entity record with node_id
         cursor.execute('''
-            INSERT INTO entities (id, name)
-            VALUES (?, ?)
-        ''', (e_id, entity_name))
-    
-    # Create corresponding node outside the transaction
-    entity_data = {
-        'name': entity_name
-    }
-    create_node('entities', e_id, entity_data)
+            INSERT INTO entities (id, name, node_id)
+            VALUES (?, ?, ?)
+        ''', (e_id, entity_name, node_id))
     
     return True
 
@@ -217,20 +223,20 @@ def store_attribute(attr_id: str, attr_type: str, subject: str, detail: str) -> 
     """Store an attribute (fact, task, rule, ref)."""
     conn = init_database()
     
-    with transaction(conn) as cursor:
-        # Insert attribute record
-        cursor.execute('''
-            INSERT INTO attributes (id, type, subject, detail)
-            VALUES (?, ?, ?, ?)
-        ''', (attr_id, attr_type, subject, detail))
-    
-    # Create corresponding node outside the transaction
+    # First create the node
     attribute_data = {
         'type': attr_type,
         'subject': subject,
         'detail': detail
     }
-    create_node('attributes', attr_id, attribute_data)
+    node_id = create_node('attributes', attr_id, attribute_data)
+    
+    with transaction(conn) as cursor:
+        # Insert attribute record with node_id
+        cursor.execute('''
+            INSERT INTO attributes (id, type, subject, detail, node_id)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (attr_id, attr_type, subject, detail, node_id))
     
     return True
 
@@ -377,7 +383,7 @@ def get_record_by_node(node_id: str) -> Dict:
     # Get record from appropriate table
     if table_name == 'entities':
         cursor.execute('''
-            SELECT id, name
+            SELECT id, name, node_id
             FROM entities WHERE id = ?
         ''', (record_id,))
         
@@ -386,12 +392,13 @@ def get_record_by_node(node_id: str) -> Dict:
             return {
                 'type': 'entity',
                 'id': row[0],
-                'name': row[1]
+                'name': row[1],
+                'node_id': row[2]
             }
     
     elif table_name == 'attributes':
         cursor.execute('''
-            SELECT id, type, subject, detail
+            SELECT id, type, subject, detail, node_id
             FROM attributes WHERE id = ?
         ''', (record_id,))
         
@@ -402,7 +409,8 @@ def get_record_by_node(node_id: str) -> Dict:
                 'id': row[0],
                 'attr_type': row[1],
                 'subject': row[2],
-                'detail': row[3]
+                'detail': row[3],
+                'node_id': row[4]
             }
     
     conn.close()
@@ -416,18 +424,18 @@ def get_entity_context(e_id: str) -> Dict:
     
     # Get entity info
     cursor.execute('''
-        SELECT name FROM entities WHERE id = ?
+        SELECT name, node_id FROM entities WHERE id = ?
     ''', (e_id,))
     entity_row = cursor.fetchone()
     
     if not entity_row:
         raise ValueError(f"Entity ID {e_id} not found")
     
-    entity_name = entity_row[0]
+    entity_name, entity_node_id = entity_row
     
     # Get all attributes (relationships are now handled via graph edges)
     cursor.execute('''
-        SELECT id, type, subject, detail FROM attributes 
+        SELECT id, type, subject, detail, node_id FROM attributes 
         ORDER BY type, subject
     ''')
     
@@ -437,7 +445,8 @@ def get_entity_context(e_id: str) -> Dict:
             'id': row[0],
             'type': row[1],
             'subject': row[2],
-            'detail': row[3]
+            'detail': row[3],
+            'node_id': row[4]
         }
         attributes.append(attr)
     
@@ -446,6 +455,7 @@ def get_entity_context(e_id: str) -> Dict:
     return {
         'e_id': e_id,
         'entity_name': entity_name,
+        'entity_node_id': entity_node_id,
         'attributes': attributes
     }
 
