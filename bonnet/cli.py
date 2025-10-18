@@ -11,7 +11,7 @@ from ._input_models import (
     LinkInput,
 )
 from . import domain
-from ._utils._cli_utils import handle_errors
+from ._utils._cli_utils import handle_errors, find_record_with_feedback, search_and_display_records
 
 
 assembler = xml_assembler()
@@ -61,14 +61,30 @@ def file(id, description, file_path):
 
 @cli.command()
 @click.option('--from-type', required=True, type=click.Choice(['entity', 'file', 'attribute']), help='Source record type')
-@click.option('--from-id', required=True, help='Source record ID')
+@click.option('--from', 'from_identifier', required=True, help='Source record ID or search query')
 @click.option('--to-type', required=True, type=click.Choice(['entity', 'file', 'attribute']), help='Target record type')
-@click.option('--to-id', required=True, help='Target record ID')
+@click.option('--to', 'to_identifier', required=True, help='Target record ID or search query')
 @click.option('--type', 'edge_type', default='references', help='Edge type (default: references)')
 @click.option('--content', help='Edge content description')
 @handle_errors
-def link(from_type, from_id, to_type, to_id, edge_type, content):
-    """Create a link between any two records"""
+def link(from_type, from_identifier, to_type, to_identifier, edge_type, content):
+    """Create a link between any two records
+    
+    You can use either record IDs or search queries for --from and --to options.
+    Examples:
+        link --from-type entity --to-type attribute --from "car" --to "black"
+        link --from-type entity --to-type entity --from T1 --to T2
+    """
+    # Resolve source record
+    from_id = find_record_with_feedback(from_identifier, from_type)
+    if not from_id:
+        return
+    
+    # Resolve target record
+    to_id = find_record_with_feedback(to_identifier, to_type)
+    if not to_id:
+        return
+    
     input_model = LinkInput(
         from_type=from_type,
         from_id=from_id,
@@ -95,3 +111,18 @@ def context(about):
     
     # Display the context tree
     display_context(context_tree)
+
+@cli.command()
+@click.option('--type', 'record_type', type=click.Choice(['entity', 'file', 'attribute']), help='Filter by record type')
+@click.option('--limit', default=10, help='Maximum number of results to show (default: 10)')
+@click.argument('query')
+@handle_errors
+def search(record_type, limit, query):
+    """Search for records by content
+    
+    Examples:
+        search "car"                    # Search all record types
+        search --type entity "vehicle"  # Search only entities
+        search --type attribute "color" # Search only attributes
+    """
+    search_and_display_records(query, record_type, limit)

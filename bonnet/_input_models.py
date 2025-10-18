@@ -51,3 +51,18 @@ class LinkInput(BaseModel):
     edge_type: str = "references"
     content: Optional[str] = None
 
+
+class SearchRecordsInput(BaseModel):
+    query: str
+    record_type: Optional[str] = None  # 'entity', 'file', 'attribute'
+
+
+class FindRecordInput(BaseModel):
+    query: str
+    record_type: Optional[str] = None
+
+
+class ResolveRecordInput(BaseModel):
+    identifier: str  # Could be ID or search query
+    record_type: Optional[str] = None
+
