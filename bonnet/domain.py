@@ -9,7 +9,7 @@ from ._input_models import (
     StoreAttributeInput,
     CreateEdgeInput,
     StoreFileInput,
-    LinkNodesInput,
+    LinkInput,
 )
 from . import database
 
@@ -217,22 +217,37 @@ def get_file_node_id(file_id: str) -> str:
     return database.get_file_node_id(file_id)
 
 
-def link_nodes(input: LinkNodesInput) -> str:
+def link(input: LinkInput) -> str:
     """
-    Link any node type to any other node type.
+    Link any record type to any other record type.
     
     Args:
-        input: LinkNodesInput containing table names, record IDs, edge type, and content
+        input: LinkInput containing record types, IDs, edge type, and content
         
     Returns:
         Edge ID if successful
     """
+    # Map record types to table names
+    type_to_table = {
+        'entity': 'entities',
+        'file': 'files',
+        'attribute': 'attributes'
+    }
+    
+    from_table = type_to_table.get(input.from_type)
+    to_table = type_to_table.get(input.to_type)
+    
+    if not from_table:
+        raise ValueError(f"Unknown record type: {input.from_type}")
+    if not to_table:
+        raise ValueError(f"Unknown record type: {input.to_type}")
+    
     return database.link_nodes(
-        input.from_table,
-        input.from_record_id,
-        input.to_table,
-        input.to_record_id,
+        from_table,
+        input.from_id,
+        to_table,
+        input.to_id,
         input.edge_type,
-        input.searchable_content
+        input.content
     )
 

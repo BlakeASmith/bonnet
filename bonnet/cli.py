@@ -8,7 +8,7 @@ from ._input_models import (
     StoreAttributeInput,
     CreateEdgeInput,
     StoreFileInput,
-    LinkNodesInput,
+    LinkInput,
 )
 from . import domain
 from ._utils._cli_utils import handle_errors
@@ -49,31 +49,6 @@ def attr(about, attr_type, subject, detail):
     click.echo(f"Stored {attr_type} attribute for entity {about}")
 
 @cli.command()
-@click.option('--from', 'from_entity', required=True, help='Source entity ID')
-@click.option('--to', 'to_entity', required=True, help='Target entity ID')
-@click.option('--type', 'edge_type', required=True, help='Edge type')
-@click.option('--content', help='Edge content')
-@handle_errors
-def link(from_entity, to_entity, edge_type, content):
-    """Create a link between two entities"""
-    # Get node IDs for the entities
-    from_node_id = domain.get_entity_node_id(from_entity)
-    to_node_id = domain.get_entity_node_id(to_entity)
-    
-    if not from_node_id or not to_node_id:
-        click.echo("One or both entities not found")
-        return
-    
-    input_model = CreateEdgeInput(
-        from_node_id=from_node_id,
-        to_node_id=to_node_id,
-        edge_type=edge_type,
-        searchable_content=content
-    )
-    edge_id = domain.create_edge(input_model)
-    click.echo(f"Created edge {edge_id} from {from_entity} to {to_entity}")
-
-@cli.command()
 @click.option('--id', required=True, help='Unique File ID')
 @click.option('--description', help='File description')
 @click.argument('file_path')
@@ -84,27 +59,26 @@ def file(id, description, file_path):
     domain.store_file(input_model)
     click.echo(f"Stored file '{file_path}' with ID {id}")
 
-
 @cli.command()
-@click.option('--from-table', required=True, help='Source table name (entities, files, attributes)')
+@click.option('--from-type', required=True, type=click.Choice(['entity', 'file', 'attribute']), help='Source record type')
 @click.option('--from-id', required=True, help='Source record ID')
-@click.option('--to-table', required=True, help='Target table name (entities, files, attributes)')
+@click.option('--to-type', required=True, type=click.Choice(['entity', 'file', 'attribute']), help='Target record type')
 @click.option('--to-id', required=True, help='Target record ID')
 @click.option('--type', 'edge_type', default='references', help='Edge type (default: references)')
 @click.option('--content', help='Edge content description')
 @handle_errors
-def link_nodes_cmd(from_table, from_id, to_table, to_id, edge_type, content):
-    """Link any node type to any other node type"""
-    input_model = LinkNodesInput(
-        from_table=from_table,
-        from_record_id=from_id,
-        to_table=to_table,
-        to_record_id=to_id,
+def link(from_type, from_id, to_type, to_id, edge_type, content):
+    """Create a link between any two records"""
+    input_model = LinkInput(
+        from_type=from_type,
+        from_id=from_id,
+        to_type=to_type,
+        to_id=to_id,
         edge_type=edge_type,
-        searchable_content=content
+        content=content
     )
-    edge_id = domain.link_nodes(input_model)
-    click.echo(f"Created edge {edge_id} linking {from_table}:{from_id} to {to_table}:{to_id}")
+    edge_id = domain.link(input_model)
+    click.echo(f"Created edge {edge_id} linking {from_type}:{from_id} to {to_type}:{to_id}")
 
 @cli.command()
 @click.option('--about', required=True, help='Search query')

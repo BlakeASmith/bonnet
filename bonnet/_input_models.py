@@ -43,11 +43,11 @@ class StoreFileInput(BaseModel):
     description: Optional[str] = None
 
 
-class LinkNodesInput(BaseModel):
-    from_table: str
-    from_record_id: str
-    to_table: str
-    to_record_id: str
+class LinkInput(BaseModel):
+    from_type: str  # 'entity', 'file', 'attribute'
+    from_id: str
+    to_type: str    # 'entity', 'file', 'attribute'
+    to_id: str
     edge_type: str = "references"
-    searchable_content: Optional[str] = None
+    content: Optional[str] = None
 
