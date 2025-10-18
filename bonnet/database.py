@@ -223,6 +223,14 @@ def store_entity(e_id: str, entity_name: str) -> None:
             VALUES (?, ?, ?)
         ''', (e_id, entity_name, node_id))
 
+def entity_exists(e_id: str) -> bool:
+    """Check if an entity with the given ID already exists."""
+    init_database()
+    
+    with transaction() as cursor:
+        cursor.execute("SELECT id FROM entities WHERE id = ?", (e_id,))
+        return cursor.fetchone() is not None
+
 def store_attribute(attr_id: str, attr_type: str, subject: str, detail: str) -> bool:
     """Store an attribute (fact, task, rule, ref) and link it to the entity."""
     init_database()
