@@ -13,12 +13,20 @@ def xml_assembler() -> Assembler:
     """Create an XML assembler that converts ContextTree to XML format."""
     
     def assemble_entity(entity: Entity) -> str:
-        lines = [
-            f"<entity id=\"{entity.e_id}\">",
-            f"{entity.entity_name}",
-            *[f"{x.type}:{x.subject}:{x.detail}" for x in entity.attributes],
-            f"</entity>"
-        ]
+        # Group attributes by type
+        attributes_by_type = {}
+        for attr in entity.attributes:
+            tag_name = attr.type.lower()
+            if tag_name not in attributes_by_type:
+                attributes_by_type[tag_name] = []
+            attributes_by_type[tag_name].append(attr)
+        
+        lines = [f"<entity id=\"{entity.e_id}\">"]
+        for tag_name, attrs in attributes_by_type.items():
+            for attr in attrs:
+                lines.append(f"  <{tag_name}>{attr.subject}:{attr.detail}</{tag_name}>")
+        lines.append("</entity>")
+        
         return '\n'.join(lines)
     
     def assemble(context: ContextTree) -> str:
