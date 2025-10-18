@@ -40,8 +40,6 @@ def get_entity_context(input: GetEntityContextInput) -> ContextTree:
     entity = Entity(
         id=context_data['e_id'],
         name=context_data['entity_name'],
-        description=context_data.get('entity_description'),
-        tags=context_data.get('entity_tags'),
         file_path=context_data.get('entity_file_path'),
         attributes=attributes
     )
@@ -115,8 +113,6 @@ def search_knowledge_graph(input: SearchKnowledgeGraphInput) -> KnowledgeGraphSe
             entity = Entity(
                 id=record_data['id'],
                 name=record_data['name'],
-                description=record_data.get('description'),
-                tags=record_data.get('tags'),
                 file_path=record_data.get('file_path')
             )
             related_records.append(entity)
@@ -141,7 +137,7 @@ def store_entity(input: StoreEntityInput) -> bool:
     Store a master ENTITY record.
     
     Args:
-        input: StoreEntityInput containing e_id, name, description, tags, and file_path
+        input: StoreEntityInput containing e_id, name, and file_path
         
     Returns:
         True if successful
@@ -149,8 +145,6 @@ def store_entity(input: StoreEntityInput) -> bool:
     return database.store_entity(
         input.e_id, 
         input.name, 
-        input.description or "", 
-        input.tags or "", 
         input.file_path
     )
 

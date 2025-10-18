@@ -21,8 +21,6 @@ class SearchKnowledgeGraphInput(BaseModel):
 class StoreEntityInput(BaseModel):
     e_id: str
     name: str
-    description: Optional[str] = None
-    tags: Optional[str] = None
     file_path: Optional[str] = None
 
 

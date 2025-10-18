@@ -49,8 +49,6 @@ def init_database():
             CREATE TABLE IF NOT EXISTS entities (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
-                description TEXT,
-                tags TEXT,
                 file_path TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -167,12 +165,7 @@ def init_database():
 @searchable_builder('entities')
 def build_entity_searchable_content(record_data: dict) -> str:
     """Build searchable content for an entity node."""
-    content_parts = [record_data.get('name', '')]
-    if record_data.get('description'):
-        content_parts.append(record_data['description'])
-    if record_data.get('tags'):
-        content_parts.append(record_data['tags'])
-    return ' '.join(content_parts)
+    return record_data.get('name', '')
 
 @searchable_builder('attributes')
 def build_attribute_searchable_content(record_data: dict) -> str:
@@ -203,7 +196,7 @@ def create_node(table_name: str, record_id: str, record_data: dict) -> str:
     
     return node_id
 
-def store_entity(e_id: str, entity_name: str, description: str = "", tags: str = "", file_path: str = None) -> bool:
+def store_entity(e_id: str, entity_name: str, file_path: str = None) -> bool:
     """Store a master ENTITY record."""
     conn = init_database()
     
@@ -215,15 +208,13 @@ def store_entity(e_id: str, entity_name: str, description: str = "", tags: str =
         
         # Insert entity record
         cursor.execute('''
-            INSERT INTO entities (id, name, description, tags, file_path)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (e_id, entity_name, description, tags, file_path))
+            INSERT INTO entities (id, name, file_path)
+            VALUES (?, ?, ?)
+        ''', (e_id, entity_name, file_path))
     
     # Create corresponding node outside the transaction
     entity_data = {
-        'name': entity_name,
-        'description': description,
-        'tags': tags
+        'name': entity_name
     }
     create_node('entities', e_id, entity_data)
     
@@ -398,7 +389,7 @@ def get_record_by_node(node_id: str) -> Dict:
     # Get record from appropriate table
     if table_name == 'entities':
         cursor.execute('''
-            SELECT id, name, description, tags, file_path
+            SELECT id, name, file_path
             FROM entities WHERE id = ?
         ''', (record_id,))
         
@@ -408,9 +399,7 @@ def get_record_by_node(node_id: str) -> Dict:
                 'type': 'entity',
                 'id': row[0],
                 'name': row[1],
-                'description': row[2],
-                'tags': row[3],
-                'file_path': row[4]
+                'file_path': row[2]
             }
     
     elif table_name == 'attributes':
@@ -442,7 +431,7 @@ def get_entity_context(e_id: str) -> Dict:
     
     # Get entity info
     cursor.execute('''
-        SELECT name, description, tags, file_path FROM entities WHERE id = ?
+        SELECT name, file_path FROM entities WHERE id = ?
     ''', (e_id,))
     entity_row = cursor.fetchone()
     
@@ -450,9 +439,7 @@ def get_entity_context(e_id: str) -> Dict:
         raise ValueError(f"Entity ID {e_id} not found")
     
     entity_name = entity_row[0]
-    entity_description = entity_row[1]
-    entity_tags = entity_row[2]
-    entity_file_path = entity_row[3]
+    entity_file_path = entity_row[1]
     
     # Get all linked attributes
     cursor.execute('''
@@ -477,8 +464,6 @@ def get_entity_context(e_id: str) -> Dict:
     return {
         'e_id': e_id,
         'entity_name': entity_name,
-        'entity_description': entity_description,
-        'entity_tags': entity_tags,
         'entity_file_path': entity_file_path,
         'attributes': attributes
     }

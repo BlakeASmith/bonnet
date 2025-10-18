@@ -22,10 +22,6 @@ def xml_assembler() -> Assembler:
             attributes_by_type[tag_name].append(attr)
         
         lines = [f"<entity id=\"{entity.id}\">"]
-        if entity.description:
-            lines.append(f"  <description>{entity.description}</description>")
-        if entity.tags:
-            lines.append(f"  <tags>{entity.tags}</tags>")
         if entity.file_path:
             lines.append(f"  <file_path>{entity.file_path}</file_path>")
         
