@@ -5,7 +5,9 @@ from contextlib import contextmanager
 from typing import List, Dict, Optional, Tuple, Callable
 
 # Global database connection
-_db_path = "bonnet.db"
+_config_dir = os.path.expanduser("~/.config/bonnet")
+os.makedirs(_config_dir, exist_ok=True)
+_db_path = os.path.join(_config_dir, "bonnet.db")
 _initialized = False
 
 # Registry for searchable content builders
