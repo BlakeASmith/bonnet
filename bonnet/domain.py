@@ -9,7 +9,6 @@ from ._input_models import (
     StoreAttributeInput,
     CreateEdgeInput,
     StoreFileInput,
-    LinkFileInput,
     LinkNodesInput,
 )
 from . import database
@@ -203,21 +202,6 @@ def store_file(input: StoreFileInput) -> bool:
     )
 
 
-def link_file(input: LinkFileInput) -> str:
-    """
-    Link a file to an entity.
-    
-    Args:
-        input: LinkFileInput containing file_id, entity_id, and edge_type
-        
-    Returns:
-        Edge ID if successful
-    """
-    return database.link_file_to_entity(
-        input.file_id,
-        input.entity_id,
-        input.edge_type
-    )
 
 
 def get_file_node_id(file_id: str) -> str:

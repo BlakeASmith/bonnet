@@ -728,9 +728,6 @@ def link_nodes(from_table: str, from_record_id: str, to_table: str, to_record_id
     
     return edge_id
 
-def link_file_to_entity(file_id: str, entity_id: str, edge_type: str = "references") -> str:
-    """Link a file to an entity (legacy function for backward compatibility)."""
-    return link_nodes("files", file_id, "entities", entity_id, edge_type)
 
 def get_file_node_id(file_id: str) -> str:
     """Get the node ID for a file."""

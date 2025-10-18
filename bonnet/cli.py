@@ -8,7 +8,6 @@ from ._input_models import (
     StoreAttributeInput,
     CreateEdgeInput,
     StoreFileInput,
-    LinkFileInput,
     LinkNodesInput,
 )
 from . import domain
@@ -85,16 +84,6 @@ def file(id, description, file_path):
     domain.store_file(input_model)
     click.echo(f"Stored file '{file_path}' with ID {id}")
 
-@cli.command()
-@click.option('--file', 'file_id', required=True, help='File ID to link')
-@click.option('--entity', 'entity_id', required=True, help='Entity ID to link to')
-@click.option('--type', 'edge_type', default='references', help='Edge type (default: references)')
-@handle_errors
-def link_file(file_id, entity_id, edge_type):
-    """Link a file to an entity"""
-    input_model = LinkFileInput(file_id=file_id, entity_id=entity_id, edge_type=edge_type)
-    edge_id = domain.link_file(input_model)
-    click.echo(f"Created edge {edge_id} linking file {file_id} to entity {entity_id}")
 
 @cli.command()
 @click.option('--from-table', required=True, help='Source table name (entities, files, attributes)')
