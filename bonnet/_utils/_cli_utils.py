@@ -59,6 +59,39 @@ def find_record_with_feedback(identifier: str) -> Optional[str]:
     return record['id']
 
 
+def find_record_by_type_with_feedback(identifier: str, record_type: str) -> Optional[str]:
+    """
+    Find a record of a specific type and return its ID, with user feedback.
+    
+    Args:
+        identifier: Either a record ID or search query
+        record_type: The expected record type
+        
+    Returns:
+        Record ID if found, None otherwise
+    """
+    record = resolve_record_identifier(identifier)
+    
+    if not record:
+        # Try searching for similar records
+        search_results = domain.search_records(identifier)
+        if search_results:
+            click.echo(f"No exact match found for '{identifier}'. Did you mean one of these?", err=True)
+            for i, result in enumerate(search_results[:5], 1):  # Show top 5 results
+                click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
+            click.echo("Please be more specific or use the exact ID.", err=True)
+        else:
+            click.echo(f"No records found matching '{identifier}'", err=True)
+        return None
+    
+    # Check if the found record matches the expected type
+    if record['type'] != record_type:
+        click.echo(f"Found {record['type']} record '{record['display']}' but expected {record_type}", err=True)
+        return None
+    
+    return record['id']
+
+
 def search_and_display_records(query: str, limit: int = 10):
     """
     Search for records and display them in a user-friendly format.

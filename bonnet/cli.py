@@ -11,7 +11,7 @@ from ._input_models import (
     LinkInput,
 )
 from . import domain
-from ._utils._cli_utils import handle_errors, find_record_with_feedback, search_and_display_records
+from ._utils._cli_utils import handle_errors, find_record_with_feedback, search_and_display_records, resolve_record_identifier
 
 
 assembler = xml_assembler()
@@ -60,41 +60,60 @@ def file(id, description, file_path):
     click.echo(f"Stored file '{file_path}' with ID {id}")
 
 @cli.command()
-@click.option('--from-type', required=True, type=click.Choice(['entity', 'file', 'attribute']), help='Source record type')
-@click.option('--from', 'from_identifier', required=True, help='Source record ID or search query')
-@click.option('--to-type', required=True, type=click.Choice(['entity', 'file', 'attribute']), help='Target record type')
-@click.option('--to', 'to_identifier', required=True, help='Target record ID or search query')
 @click.option('--type', 'edge_type', default='references', help='Edge type (default: references)')
 @click.option('--content', help='Edge content description')
+@click.argument('from_identifier')
+@click.argument('to_identifier')
 @handle_errors
-def link(from_type, from_identifier, to_type, to_identifier, edge_type, content):
+def link(from_identifier, to_identifier, edge_type, content):
     """Create a link between any two records
     
-    You can use either record IDs or search queries for --from and --to options.
+    You can use either record IDs or search queries for the source and target.
+    The system will automatically detect the record types.
+    
     Examples:
-        link --from-type entity --to-type attribute --from "car" --to "black"
-        link --from-type entity --to-type entity --from T1 --to T2
+        link "car" "black"                    # Link car entity to black attribute
+        link T1 T2                           # Link entity T1 to entity T2
+        link "bike" "red color"              # Link bike to red color attribute
     """
     # Resolve source record
-    from_id = find_record_with_feedback(from_identifier)
-    if not from_id:
+    from_record = resolve_record_identifier(from_identifier)
+    if not from_record:
+        # Try searching for similar records
+        search_results = domain.search_records(from_identifier)
+        if search_results:
+            click.echo(f"No exact match found for '{from_identifier}'. Did you mean one of these?", err=True)
+            for i, result in enumerate(search_results[:5], 1):  # Show top 5 results
+                click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
+            click.echo("Please be more specific or use the exact ID.", err=True)
+        else:
+            click.echo(f"No records found matching '{from_identifier}'", err=True)
         return
     
     # Resolve target record
-    to_id = find_record_with_feedback(to_identifier)
-    if not to_id:
+    to_record = resolve_record_identifier(to_identifier)
+    if not to_record:
+        # Try searching for similar records
+        search_results = domain.search_records(to_identifier)
+        if search_results:
+            click.echo(f"No exact match found for '{to_identifier}'. Did you mean one of these?", err=True)
+            for i, result in enumerate(search_results[:5], 1):  # Show top 5 results
+                click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
+            click.echo("Please be more specific or use the exact ID.", err=True)
+        else:
+            click.echo(f"No records found matching '{to_identifier}'", err=True)
         return
     
     input_model = LinkInput(
-        from_type=from_type,
-        from_id=from_id,
-        to_type=to_type,
-        to_id=to_id,
+        from_type=from_record['type'],
+        from_id=from_record['id'],
+        to_type=to_record['type'],
+        to_id=to_record['id'],
         edge_type=edge_type,
         content=content
     )
     edge_id = domain.link(input_model)
-    click.echo(f"Created edge {edge_id} linking {from_type}:{from_id} to {to_type}:{to_id}")
+    click.echo(f"Created edge {edge_id} linking {from_record['type']}:{from_record['id']} to {to_record['type']}:{to_record['id']}")
 
 @cli.command()
 @click.option('--about', required=True, help='Search query')
