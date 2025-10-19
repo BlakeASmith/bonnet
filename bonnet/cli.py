@@ -40,10 +40,10 @@ def topic(id, text):
 @click.option('--about', required=True, help='Record ID or search query to link to')
 @click.option('--type', 'attr_type', required=True, help='Attribute type (FACT, REF, etc.)')
 @click.option('--subject', required=True, help='Subject text')
-@click.option('--select-index', type=int, help='Select specific match by index when multiple records found')
+@click.option('--no-interactive', is_flag=True, help='Automatically select first match when multiple records found')
 @click.argument('detail')
 @handle_errors
-def attr(about, attr_type, subject, detail, select_index):
+def attr(about, attr_type, subject, detail, no_interactive):
     """Store an attribute
     
     You can use either a record ID or search query for the --about option.
@@ -53,10 +53,10 @@ def attr(about, attr_type, subject, detail, select_index):
         attr --about T1 --type FACT --subject color "red"     # Using record ID
         attr --about "car" --type FACT --subject color "red"  # Using search query
         attr --about "bike" --type FACT --subject type "mountain"  # Link to any record
-        attr --about "shark" --type FACT --subject species "great white" --select-index 1  # Select first match
+        attr --about "shark" --type FACT --subject species "great white" --no-interactive  # Auto-select first match
     """
     # Find the target record using the enhanced function
-    target_record_id = find_record_with_feedback(about, select_index)
+    target_record_id = find_record_with_feedback(about, no_interactive)
     if not target_record_id:
         return
     
@@ -85,12 +85,11 @@ def file(id, description, file_path):
 @cli.command()
 @click.option('--type', 'edge_type', default='references', help='Edge type (default: references)')
 @click.option('--content', help='Edge content description')
-@click.option('--from-select-index', type=int, help='Select specific match by index for source record when multiple found')
-@click.option('--to-select-index', type=int, help='Select specific match by index for target record when multiple found')
+@click.option('--no-interactive', is_flag=True, help='Automatically select first match when multiple records found')
 @click.argument('from_identifier')
 @click.argument('to_identifier')
 @handle_errors
-def link(from_identifier, to_identifier, edge_type, content, from_select_index, to_select_index):
+def link(from_identifier, to_identifier, edge_type, content, no_interactive):
     """Create a link between any two records
     
     You can use either record IDs or search queries for the source and target.
@@ -100,10 +99,10 @@ def link(from_identifier, to_identifier, edge_type, content, from_select_index, 
         link "car" "black"                    # Link car entity to black attribute
         link T1 T2                           # Link entity T1 to entity T2
         link "bike" "red color"              # Link bike to red color attribute
-        link "shark" "fish" --from-select-index 1 --to-select-index 2  # Select specific matches
+        link "shark" "fish" --no-interactive  # Auto-select first matches
     """
     # Find source record using the enhanced function
-    from_record_id = find_record_with_feedback(from_identifier, from_select_index)
+    from_record_id = find_record_with_feedback(from_identifier, no_interactive)
     if not from_record_id:
         return
     
@@ -115,7 +114,7 @@ def link(from_identifier, to_identifier, edge_type, content, from_select_index, 
         return
     
     # Find target record using the enhanced function
-    to_record_id = find_record_with_feedback(to_identifier, to_select_index)
+    to_record_id = find_record_with_feedback(to_identifier, no_interactive)
     if not to_record_id:
         return
     

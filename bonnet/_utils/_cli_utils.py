@@ -19,13 +19,13 @@ def handle_errors(func):
     return wrapper
 
 
-def find_record_with_feedback(identifier: str, select_index: Optional[int] = None) -> Optional[str]:
+def find_record_with_feedback(identifier: str, no_interactive: bool = False) -> Optional[str]:
     """
     Find a record and return its ID, with user feedback for ambiguous results.
     
     Args:
         identifier: Either a record ID or search query
-        select_index: If provided, select the record at this index (1-based)
+        no_interactive: If True, automatically select the first match when ambiguous
         
     Returns:
         Record ID if found, None otherwise
@@ -40,20 +40,15 @@ def find_record_with_feedback(identifier: str, select_index: Optional[int] = Non
         return results[0]['id']
     
     # Multiple results - handle based on options
-    if select_index is not None:
-        if 1 <= select_index <= len(results):
-            selected_result = results[select_index - 1]
-            click.echo(f"Selected record {select_index}: {selected_result['display']} ({selected_result['type']}:{selected_result['id']})", err=True)
-            return selected_result['id']
-        else:
-            click.echo(f"Invalid selection index {select_index}. Must be between 1 and {len(results)}", err=True)
-            return None
+    if no_interactive:
+        click.echo(f"Multiple records found for '{identifier}'. Auto-selecting first match: {results[0]['display']} ({results[0]['type']}:{results[0]['id']})", err=True)
+        return results[0]['id']
     
     # Show them and ask for clarification
     click.echo(f"Multiple records found for '{identifier}'. Did you mean one of these?", err=True)
     for i, result in enumerate(results[:5], 1):  # Show top 5 results
         click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
-    click.echo("Please be more specific, use the exact ID, or use --select-index to choose by number.", err=True)
+    click.echo("Please be more specific, use the exact ID, or use --no-interactive to auto-select the first match.", err=True)
     return None
 
 
