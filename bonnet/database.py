@@ -128,10 +128,10 @@ def init_database():
             # Create FTS5 virtual tables with porter tokenizer for stemming
             cursor.execute('''
                 CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(
+                    record_id,
                     searchable_content,
                     content='nodes',
-                    content_rowid='rowid',
-                    tokenize='porter unicode61'
+                    content_rowid='rowid'
                 )
             ''')
             
@@ -148,20 +148,20 @@ def init_database():
             # Nodes FTS triggers
             cursor.execute('''
                 CREATE TRIGGER IF NOT EXISTS nodes_ai AFTER INSERT ON nodes BEGIN
-                    INSERT INTO nodes_fts(rowid, searchable_content) VALUES (new.rowid, new.searchable_content);
+                    INSERT INTO nodes_fts(rowid, record_id, searchable_content) VALUES (new.rowid, new.record_id, new.searchable_content);
                 END
             ''')
             
             cursor.execute('''
                 CREATE TRIGGER IF NOT EXISTS nodes_ad AFTER DELETE ON nodes BEGIN
-                    INSERT INTO nodes_fts(nodes_fts, rowid, searchable_content) VALUES('delete', old.rowid, old.searchable_content);
+                    INSERT INTO nodes_fts(nodes_fts, rowid, record_id, searchable_content) VALUES('delete', old.rowid, old.record_id, old.searchable_content);
                 END
             ''')
             
             cursor.execute('''
                 CREATE TRIGGER IF NOT EXISTS nodes_au AFTER UPDATE ON nodes BEGIN
-                    INSERT INTO nodes_fts(nodes_fts, rowid, searchable_content) VALUES('delete', old.rowid, old.searchable_content);
-                    INSERT INTO nodes_fts(rowid, searchable_content) VALUES (new.rowid, new.searchable_content);
+                    INSERT INTO nodes_fts(nodes_fts, rowid, record_id, searchable_content) VALUES('delete', old.rowid, old.record_id, old.searchable_content);
+                    INSERT INTO nodes_fts(rowid, record_id, searchable_content) VALUES (new.rowid, new.record_id, new.searchable_content);
                 END
             ''')
             
@@ -192,26 +192,25 @@ def init_database():
 @searchable_builder('entities')
 def build_entity_searchable_content(record_data: dict) -> str:
     """Build searchable content for an entity node."""
-    content_parts = [record_data.get('id', ''), record_data.get('name', '')]
-    return ' '.join(filter(None, content_parts))
+    return record_data.get('name', '')
 
 @searchable_builder('attributes')
 def build_attribute_searchable_content(record_data: dict) -> str:
     """Build searchable content for an attribute node."""
-    content_parts = [record_data.get('id', ''), record_data.get('type', '')]
+    content_parts = [record_data.get('type', '')]
     if record_data.get('subject'):
         content_parts.append(record_data['subject'])
     if record_data.get('detail'):
         content_parts.append(record_data['detail'])
-    return ' '.join(filter(None, content_parts))
+    return ' '.join(content_parts)
 
 @searchable_builder('files')
 def build_file_searchable_content(record_data: dict) -> str:
     """Build searchable content for a file node."""
-    content_parts = [record_data.get('id', ''), record_data.get('file_path', '')]
+    content_parts = [record_data.get('file_path', '')]
     if record_data.get('description'):
         content_parts.append(record_data['description'])
-    return ' '.join(filter(None, content_parts))
+    return ' '.join(content_parts)
 
 def create_node(table_name: str, record_id: str, record_data: dict) -> str:
     """Create a node for any table record using registered builder."""
@@ -797,61 +796,67 @@ def search_records(query: str) -> List[Dict]:
         FROM nodes n
         JOIN nodes_fts fts ON n.rowid = fts.rowid
         WHERE nodes_fts MATCH ?
-    ''', (f'"{query}"',))
+    ''', (query,))
     
     for row in cursor.fetchall():
         node_id, table_name, record_id, searchable_content = row
-        
-        # Get the actual record data based on table_name
-        if table_name == 'entities':
-            cursor.execute('''
-                SELECT id, name FROM entities WHERE id = ?
-            ''', (record_id,))
-            record_row = cursor.fetchone()
-            if record_row:
-                results.append({
-                    'type': 'entity',
-                    'id': record_row[0],
-                    'name': record_row[1],
-                    'display': record_row[1],
-                    'searchable_content': searchable_content
-                })
-        
-        elif table_name == 'attributes':
-            cursor.execute('''
-                SELECT id, type, subject, detail FROM attributes WHERE id = ?
-            ''', (record_id,))
-            record_row = cursor.fetchone()
-            if record_row:
-                display = f"{record_row[1]}: {record_row[2]}" if record_row[2] else record_row[1]
-                if record_row[3]:  # detail
-                    display += f" - {record_row[3]}"
-                
-                results.append({
-                    'type': 'attribute',
-                    'id': record_row[0],
-                    'name': display,
-                    'display': display,
-                    'searchable_content': searchable_content
-                })
-        
-        elif table_name == 'files':
-            cursor.execute('''
-                SELECT id, file_path, description FROM files WHERE id = ?
-            ''', (record_id,))
-            record_row = cursor.fetchone()
-            if record_row:
-                display = record_row[1]  # file_path
-                if record_row[2]:  # description
-                    display += f" ({record_row[2]})"
-                
-                results.append({
-                    'type': 'file',
-                    'id': record_row[0],
-                    'name': display,
-                    'display': display,
-                    'searchable_content': searchable_content
-                })
+        results.extend(_get_record_data(cursor, table_name, record_id, searchable_content))
     
     conn.close()
+    return results
+
+def _get_record_data(cursor, table_name: str, record_id: str, searchable_content: str) -> List[Dict]:
+    """Helper function to get record data based on table name."""
+    results = []
+    
+    if table_name == 'entities':
+        cursor.execute('''
+            SELECT id, name FROM entities WHERE id = ?
+        ''', (record_id,))
+        record_row = cursor.fetchone()
+        if record_row:
+            results.append({
+                'type': 'entity',
+                'id': record_row[0],
+                'name': record_row[1],
+                'display': record_row[1],
+                'searchable_content': searchable_content
+            })
+    
+    elif table_name == 'attributes':
+        cursor.execute('''
+            SELECT id, type, subject, detail FROM attributes WHERE id = ?
+        ''', (record_id,))
+        record_row = cursor.fetchone()
+        if record_row:
+            display = f"{record_row[1]}: {record_row[2]}" if record_row[2] else record_row[1]
+            if record_row[3]:  # detail
+                display += f" - {record_row[3]}"
+            
+            results.append({
+                'type': 'attribute',
+                'id': record_row[0],
+                'name': display,
+                'display': display,
+                'searchable_content': searchable_content
+            })
+    
+    elif table_name == 'files':
+        cursor.execute('''
+            SELECT id, file_path, description FROM files WHERE id = ?
+        ''', (record_id,))
+        record_row = cursor.fetchone()
+        if record_row:
+            display = record_row[1]  # file_path
+            if record_row[2]:  # description
+                display += f" ({record_row[2]})"
+            
+            results.append({
+                'type': 'file',
+                'id': record_row[0],
+                'name': display,
+                'display': display,
+                'searchable_content': searchable_content
+            })
+    
     return results
