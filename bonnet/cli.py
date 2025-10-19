@@ -209,9 +209,14 @@ def completion(shell, output):
         echo 'eval "$(bonnet completion --shell bash)"' >> ~/.bashrc
     
     For Zsh:
+        # Option 1: Source directly (recommended)
+        source <(bonnet completion --shell zsh)
+        
+        # Option 2: Add to ~/.zshrc
+        echo 'source <(bonnet completion --shell zsh)' >> ~/.zshrc
+        
+        # Option 3: Use eval (if bonnet is in PATH)
         eval "$(bonnet completion --shell zsh)"
-        # Or add to ~/.zshrc:
-        echo 'eval "$(bonnet completion --shell zsh)"' >> ~/.zshrc
     
     For Fish:
         bonnet completion --shell fish > ~/.config/fish/completions/bonnet.fish
@@ -237,17 +242,26 @@ def completion(shell, output):
     
     # Generate the completion script using Click's built-in completion
     try:
+        # Get the path to the bonnet executable
+        import shutil
+        bonnet_path = shutil.which('bonnet')
+        if not bonnet_path:
+            # Fallback to python module if bonnet not in PATH
+            bonnet_path = 'python3 -m bonnet'
+        
         if shell.lower() == 'bash':
             script = f"""# bash completion for bonnet
-eval "$(_BONNET_COMPLETE=bash_source bonnet)"
+eval "$(_BONNET_COMPLETE=bash_source {bonnet_path})"
 """
         elif shell.lower() == 'zsh':
             script = f"""# zsh completion for bonnet
-eval "$(_BONNET_COMPLETE=zsh_source bonnet)"
+# Source this file in your ~/.zshrc or run: source <(bonnet completion --shell zsh)
+eval "$(_BONNET_COMPLETE=zsh_source {bonnet_path})"
 """
         elif shell.lower() == 'fish':
             script = f"""# fish completion for bonnet
-eval (env _BONNET_COMPLETE=fish_source bonnet)
+# Save this file to ~/.config/fish/completions/bonnet.fish
+eval (env _BONNET_COMPLETE=fish_source {bonnet_path})
 """
         else:
             click.echo(f"Unsupported shell: {shell}", err=True)

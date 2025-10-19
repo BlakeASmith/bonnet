@@ -12,6 +12,11 @@ def complete_record_ids(ctx: click.Context, param: click.Parameter, incomplete: 
     This works for both entity IDs and search queries.
     """
     try:
+        # If incomplete is empty, get recent records instead of searching
+        if not incomplete:
+            recent_results = domain.database.get_recent_records(5)
+            return [result['id'] for result in recent_results[:5]]
+        
         # Search for records that match the incomplete string
         results = domain.search_records(incomplete)
         
@@ -20,11 +25,6 @@ def complete_record_ids(ctx: click.Context, param: click.Parameter, incomplete: 
         for result in results[:10]:  # Limit to 10 results
             # Use the ID as the completion value
             completions.append(result['id'])
-        
-        # If no results found, try to get recent records
-        if not completions and not incomplete:
-            recent_results = domain.database.get_recent_records(5)
-            completions = [result['id'] for result in recent_results[:5]]
         
         return completions
     except Exception:
@@ -37,6 +37,11 @@ def complete_entity_ids(ctx: click.Context, param: click.Parameter, incomplete: 
     Complete entity IDs specifically for entity-related parameters.
     """
     try:
+        # If incomplete is empty, get recent entities
+        if not incomplete:
+            recent_results = domain.database.search_records_by_type('entity', '', 5)
+            return [result['id'] for result in recent_results if result.get('id')]
+        
         # Search for entities that match the incomplete string
         results = domain.database.search_records_by_type('entity', incomplete, 10)
         
@@ -45,11 +50,6 @@ def complete_entity_ids(ctx: click.Context, param: click.Parameter, incomplete: 
         for result in results:
             if result.get('id'):
                 completions.append(result['id'])
-        
-        # If no results found, try to get recent entities
-        if not completions and not incomplete:
-            recent_results = domain.database.search_records_by_type('entity', '', 5)
-            completions = [result['id'] for result in recent_results if result.get('id')]
         
         return completions
     except Exception:
@@ -144,6 +144,20 @@ def complete_search_queries(ctx: click.Context, param: click.Parameter, incomple
     Complete search queries based on existing record content.
     """
     try:
+        # If incomplete is empty, get recent records for suggestions
+        if not incomplete:
+            recent_results = domain.database.get_recent_records(5)
+            completions = []
+            seen = set()
+            for result in recent_results:
+                if result.get('searchable_content'):
+                    content = result['searchable_content']
+                    snippet = content[:50].strip()
+                    if snippet and snippet not in seen:
+                        seen.add(snippet)
+                        completions.append(snippet)
+            return completions
+        
         # Search for records that match the incomplete string
         results = domain.search_records(incomplete)
         
@@ -159,17 +173,6 @@ def complete_search_queries(ctx: click.Context, param: click.Parameter, incomple
                 if snippet and snippet not in seen:
                     seen.add(snippet)
                     completions.append(snippet)
-        
-        # If no results found, try to get recent records for suggestions
-        if not completions and not incomplete:
-            recent_results = domain.database.get_recent_records(5)
-            for result in recent_results:
-                if result.get('searchable_content'):
-                    content = result['searchable_content']
-                    snippet = content[:50].strip()
-                    if snippet and snippet not in seen:
-                        seen.add(snippet)
-                        completions.append(snippet)
         
         return completions
     except Exception:
