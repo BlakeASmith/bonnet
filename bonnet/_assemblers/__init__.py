@@ -19,9 +19,9 @@ def xml_assembler() -> Assembler:
         def assemble_attribute(attribute: Attribute) -> str:
             return f"<attribute id=\"{attribute.id}\" type=\"{attribute.type}\">{attribute.subject}:{attribute.detail}</attribute>"
         
-        def assemble_file(file: File) -> str:
+        def assemble_file(file: File, indent: str) -> str:
             if file.description:
-                return f"<file id=\"{file.id}\" path=\"{file.file_path}\"><description>{file.description}</description></file>"
+                return f"<file id=\"{file.id}\" path=\"{file.file_path}\">\n{indent}  <description>{file.description}</description>\n{indent}</file>"
             else:
                 return f"<file id=\"{file.id}\" path=\"{file.file_path}\"></file>"
         
@@ -51,7 +51,7 @@ def xml_assembler() -> Assembler:
             
             elif tree.type == 'file' and tree.data:
                 file = tree.data
-                result_lines.append(f"{indent}{assemble_file(file)}")
+                result_lines.append(f"{indent}{assemble_file(file, indent)}")
             
             elif tree.type == 'root':
                 # For root nodes, process all children
