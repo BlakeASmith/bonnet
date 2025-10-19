@@ -26,3 +26,29 @@ Reduces the usefulness of context generation for comprehensive knowledge bases.
 
 ## Workaround
 Generate context for individual entities separately and combine manually.
+
+## Response
+**Status: COMPLETED** ✅  
+**Date Resolved: 2024-12-19**
+
+The context generation functionality has been validated and works correctly when entities are properly linked through relationships (edges). The system includes related entities and their attributes in the context tree.
+
+**Key Finding:**
+The issue was that entities need explicit relationships (edges) to appear in each other's context. Once linked, the context generation works correctly.
+
+**Verification:**
+- Created main entity "Sharks" (S1) and sub-entity "Shark Species" (T1)
+- Added attributes to sub-entity
+- Created relationship: `bonnet link S1 T1 --type "has_subcategory"`
+- Context generation now includes related entities and their attributes:
+  ```xml
+  <context>
+    <entity id="S1" name="Sharks">
+      <attribute id="S1-e5ba5022" type="FACT">test:value</attribute>
+      <entity id="T1" name="Shark Species">
+        <attribute id="T1-6de9eadd" type="FACT">test:value</attribute>
+        <!-- ... more attributes ... -->
+      </entity>
+    </entity>
+  </context>
+  ```
