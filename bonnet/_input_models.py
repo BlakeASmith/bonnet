@@ -51,7 +51,3 @@ class LinkInput(BaseModel):
     edge_type: str = "references"
     content: Optional[str] = None
 
-
-class SearchInput(BaseModel):
-    query: str
-

@@ -37,16 +37,48 @@ def topic(id, text):
     click.echo(f"Stored topic '{text}' with ID {actual_id}")
 
 @cli.command()
-@click.option('--about', required=True, help='Entity ID to link to')
+@click.option('--about', required=True, help='Entity ID or search query to link to')
 @click.option('--type', 'attr_type', required=True, help='Attribute type (FACT, REF, etc.)')
 @click.option('--subject', required=True, help='Subject text')
 @click.argument('detail')
 @handle_errors
 def attr(about, attr_type, subject, detail):
-    """Store an attribute"""
-    input_model = StoreAttributeInput(attr_id=about, attr_type=attr_type, subject=subject, detail=detail)
+    """Store an attribute
+    
+    You can use either an entity ID or search query for the --about option.
+    The system will automatically find the matching entity.
+    
+    Examples:
+        attr --about T1 --type FACT --subject color "red"     # Using entity ID
+        attr --about "car" --type FACT --subject color "red"  # Using search query
+    """
+    # Find the entity record
+    results = domain.search_records(about)
+    if not results:
+        click.echo(f"No records found matching '{about}'", err=True)
+        return
+    
+    # Filter for entities only
+    entity_results = [result for result in results if result['type'] == 'entity']
+    
+    if not entity_results:
+        click.echo(f"No entities found matching '{about}'", err=True)
+        click.echo("The --about option must reference an entity record.", err=True)
+        return
+    
+    if len(entity_results) > 1:
+        click.echo(f"Multiple entities found for '{about}'. Did you mean one of these?", err=True)
+        for i, result in enumerate(entity_results[:5], 1):
+            click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
+        click.echo("Please be more specific or use the exact ID.", err=True)
+        return
+    
+    # Use the single entity result
+    entity_record = entity_results[0]
+    
+    input_model = StoreAttributeInput(attr_id=entity_record['id'], attr_type=attr_type, subject=subject, detail=detail)
     domain.store_attribute(input_model)
-    click.echo(f"Stored {attr_type} attribute for entity {about}")
+    click.echo(f"Stored {attr_type} attribute for entity {entity_record['id']} ({entity_record['display']})")
 
 @cli.command()
 @click.option('--id', required=True, help='Unique File ID')
@@ -118,10 +150,19 @@ def link(from_identifier, to_identifier, edge_type, content):
     click.echo(f"Created edge {edge_id} linking {from_record['type']}:{from_record['id']} to {to_record['type']}:{to_record['id']}")
 
 @cli.command()
-@click.option('--about', required=True, help='Search query')
+@click.option('--about', required=True, help='Entity ID or search query')
 @handle_errors
 def context(about):
-    """Search and generate context"""
+    """Search and generate context for entities
+    
+    You can use either an entity ID or search query for the --about option.
+    The system will find matching entities and display their context.
+    
+    Examples:
+        context --about T1                    # Using entity ID
+        context --about "car"                 # Using search query
+        context --about "red color"           # Using search query
+    """
     input_model = SearchEntitiesInput(query=about)
     context_tree = domain.search_entities(input_model)
     
