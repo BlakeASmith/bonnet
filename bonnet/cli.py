@@ -88,7 +88,7 @@ def attr(about, attr_type, subject, detail, no_interactive):
     click.echo(f"Stored {attr_type} attribute for {target_record['type']} {target_record['id']} ({target_record['display']})")
 
 @cli.command()
-@click.option('--id', required=True, help='Unique File ID')
+@click.option('--id', help='Unique File ID (auto-generated if not provided)')
 @click.option('--description', help='File description')
 @click.option('--content', help='File content to include in context')
 @click.option('--include-content', is_flag=True, help='Include file content in XML output')
@@ -98,9 +98,10 @@ def file(id, description, content, include_content, file_path):
     """Store a file reference
     
     Examples:
+        file --description "Config file" config.txt
         file --id F1 --description "Config file" config.txt
-        file --id F2 --description "Readme" --content "This is the readme content" --include-content readme.txt
-        file --id F3 --description "Instructions" --content "Read this when setting up" --include-content instructions.txt
+        file --description "Readme" --content "This is the readme content" --include-content readme.txt
+        file --description "Instructions" --content "Read this when setting up" --include-content instructions.txt
     """
     input_model = StoreFileInput(
         file_id=id, 
@@ -109,9 +110,9 @@ def file(id, description, content, include_content, file_path):
         content=content,
         include_content=include_content
     )
-    domain.store_file(input_model)
+    actual_id = domain.store_file(input_model)
     content_msg = " (with content)" if include_content and content else ""
-    click.echo(f"Stored file '{file_path}' with ID {id}{content_msg}")
+    click.echo(f"Stored file '{file_path}' with ID {actual_id}{content_msg}")
 
 @cli.command()
 @click.option('--type', 'edge_type', default='references', help='Edge type (default: references)', shell_complete=complete_edge_types)

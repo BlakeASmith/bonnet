@@ -26,6 +26,18 @@ def generate_topic_id() -> str:
     return f"T{next_number}"
 
 
+def generate_file_id() -> str:
+    """
+    Generate a simple file ID with prefix and number.
+    
+    Returns:
+        A simple ID like "F1", "F2", "F3", etc.
+    """
+    # Get next available number for file prefix
+    next_number = database.get_next_id_number("F")
+    return f"F{next_number}"
+
+
 def search(input: SearchInput) -> ContextTree:
     """
     Search the knowledge graph using FTS and optionally include related nodes.
@@ -199,23 +211,27 @@ def get_entity_node_id(entity_id: str) -> str:
     return database.get_entity_node_id(entity_id)
 
 
-def store_file(input: StoreFileInput) -> bool:
+def store_file(input: StoreFileInput) -> str:
     """
     Store a file record.
     
     Args:
-        input: StoreFileInput containing file_id, file_path, description, content, and include_content
+        input: StoreFileInput containing file_id (optional), file_path, description, content, and include_content
         
     Returns:
-        True if successful
+        The file ID used (either provided or generated)
     """
-    return database.store_file(
-        input.file_id,
+    # Generate file ID if not provided
+    file_id = input.file_id if input.file_id is not None else generate_file_id()
+    
+    database.store_file(
+        file_id,
         input.file_path,
         input.description,
         input.content,
         input.include_content
     )
+    return file_id
 
 
 
