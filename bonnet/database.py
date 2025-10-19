@@ -698,6 +698,21 @@ def get_edges_from_node(node_id: str) -> List[Dict]:
         } for row in rows]
 
 
+def get_edges_to_node(node_id: str) -> List[Dict]:
+    """Get all edges to a specific node."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM edges WHERE to_node_id = ?", (node_id,))
+        rows = cursor.fetchall()
+        return [{
+            'id': row[0],
+            'from_node_id': row[1],
+            'to_node_id': row[2],
+            'edge_type': row[3],
+            'searchable_content': row[4]
+        } for row in rows]
+
+
 def get_entity_node_id(entity_id: str) -> str:
     """Get the node ID for an entity."""
     with get_connection() as conn:
