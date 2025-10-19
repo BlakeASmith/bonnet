@@ -790,139 +790,135 @@ def search_records(query: str) -> List[Dict]:
     
     results = []
     
-    # First try to find by exact ID for any query
-    # Try entities
+    # First try to find by exact record_id in nodes table
     cursor.execute('''
-        SELECT e.id, e.name, n.searchable_content
-        FROM entities e
-        JOIN nodes n ON e.node_id = n.id
-        WHERE e.id = ?
+        SELECT n.id, n.table_name, n.record_id, n.searchable_content
+        FROM nodes n
+        WHERE n.record_id = ?
     ''', (query,))
     
     row = cursor.fetchone()
     if row:
-        results.append({
-            'type': 'entity',
-            'id': row[0],
-            'name': row[1],
-            'display': row[1],
-            'searchable_content': row[2]
-        })
-        conn.close()
-        return results
-    
-    # Try attributes
-    cursor.execute('''
-        SELECT a.id, a.type, a.subject, a.detail, n.searchable_content
-        FROM attributes a
-        JOIN nodes n ON a.node_id = n.id
-        WHERE a.id = ?
-    ''', (query,))
-    
-    row = cursor.fetchone()
-    if row:
-        display = f"{row[1]}: {row[2]}" if row[2] else row[1]
-        if row[3]:  # detail
-            display += f" - {row[3]}"
+        node_id, table_name, record_id, searchable_content = row
         
-        results.append({
-            'type': 'attribute',
-            'id': row[0],
-            'name': display,
-            'display': display,
-            'searchable_content': row[4]
-        })
-        conn.close()
-        return results
-    
-    # Try files
-    cursor.execute('''
-        SELECT f.id, f.file_path, f.description, n.searchable_content
-        FROM files f
-        JOIN nodes n ON f.node_id = n.id
-        WHERE f.id = ?
-    ''', (query,))
-    
-    row = cursor.fetchone()
-    if row:
-        display = row[1]  # file_path
-        if row[2]:  # description
-            display += f" ({row[2]})"
+        # Get the actual record data based on table_name
+        if table_name == 'entities':
+            cursor.execute('''
+                SELECT id, name FROM entities WHERE id = ?
+            ''', (record_id,))
+            record_row = cursor.fetchone()
+            if record_row:
+                results.append({
+                    'type': 'entity',
+                    'id': record_row[0],
+                    'name': record_row[1],
+                    'display': record_row[1],
+                    'searchable_content': searchable_content
+                })
+                conn.close()
+                return results
         
-        results.append({
-            'type': 'file',
-            'id': row[0],
-            'name': display,
-            'display': display,
-            'searchable_content': row[3]
-        })
-        conn.close()
-        return results
+        elif table_name == 'attributes':
+            cursor.execute('''
+                SELECT id, type, subject, detail FROM attributes WHERE id = ?
+            ''', (record_id,))
+            record_row = cursor.fetchone()
+            if record_row:
+                display = f"{record_row[1]}: {record_row[2]}" if record_row[2] else record_row[1]
+                if record_row[3]:  # detail
+                    display += f" - {record_row[3]}"
+                
+                results.append({
+                    'type': 'attribute',
+                    'id': record_row[0],
+                    'name': display,
+                    'display': display,
+                    'searchable_content': searchable_content
+                })
+                conn.close()
+                return results
+        
+        elif table_name == 'files':
+            cursor.execute('''
+                SELECT id, file_path, description FROM files WHERE id = ?
+            ''', (record_id,))
+            record_row = cursor.fetchone()
+            if record_row:
+                display = record_row[1]  # file_path
+                if record_row[2]:  # description
+                    display += f" ({record_row[2]})"
+                
+                results.append({
+                    'type': 'file',
+                    'id': record_row[0],
+                    'name': display,
+                    'display': display,
+                    'searchable_content': searchable_content
+                })
+                conn.close()
+                return results
     
-    # If no exact ID match, search by content
-    # Search entities
+    # If no exact ID match, search by content using nodes table
     cursor.execute('''
-        SELECT e.id, e.name, n.searchable_content
-        FROM entities e
-        JOIN nodes n ON e.node_id = n.id
+        SELECT n.id, n.table_name, n.record_id, n.searchable_content
+        FROM nodes n
         JOIN nodes_fts fts ON n.rowid = fts.rowid
         WHERE nodes_fts MATCH ?
     ''', (f'"{query}"',))
     
     for row in cursor.fetchall():
-        results.append({
-            'type': 'entity',
-            'id': row[0],
-            'name': row[1],
-            'display': row[1],  # For entities, display is the name
-            'searchable_content': row[2]
-        })
-    
-    # Search attributes
-    cursor.execute('''
-        SELECT a.id, a.type, a.subject, a.detail, n.searchable_content
-        FROM attributes a
-        JOIN nodes n ON a.node_id = n.id
-        JOIN nodes_fts fts ON n.rowid = fts.rowid
-        WHERE nodes_fts MATCH ?
-    ''', (f'"{query}"',))
-    
-    for row in cursor.fetchall():
-        # Create a display name for attributes
-        display = f"{row[1]}: {row[2]}" if row[2] else row[1]
-        if row[3]:  # detail
-            display += f" - {row[3]}"
+        node_id, table_name, record_id, searchable_content = row
         
-        results.append({
-            'type': 'attribute',
-            'id': row[0],
-            'name': display,
-            'display': display,
-            'searchable_content': row[4]
-        })
-    
-    # Search files
-    cursor.execute('''
-        SELECT f.id, f.file_path, f.description, n.searchable_content
-        FROM files f
-        JOIN nodes n ON f.node_id = n.id
-        JOIN nodes_fts fts ON n.rowid = fts.rowid
-        WHERE nodes_fts MATCH ?
-    ''', (f'"{query}"',))
-    
-    for row in cursor.fetchall():
-        # Create a display name for files
-        display = row[1]  # file_path
-        if row[2]:  # description
-            display += f" ({row[2]})"
+        # Get the actual record data based on table_name
+        if table_name == 'entities':
+            cursor.execute('''
+                SELECT id, name FROM entities WHERE id = ?
+            ''', (record_id,))
+            record_row = cursor.fetchone()
+            if record_row:
+                results.append({
+                    'type': 'entity',
+                    'id': record_row[0],
+                    'name': record_row[1],
+                    'display': record_row[1],
+                    'searchable_content': searchable_content
+                })
         
-        results.append({
-            'type': 'file',
-            'id': row[0],
-            'name': display,
-            'display': display,
-            'searchable_content': row[3]
-        })
+        elif table_name == 'attributes':
+            cursor.execute('''
+                SELECT id, type, subject, detail FROM attributes WHERE id = ?
+            ''', (record_id,))
+            record_row = cursor.fetchone()
+            if record_row:
+                display = f"{record_row[1]}: {record_row[2]}" if record_row[2] else record_row[1]
+                if record_row[3]:  # detail
+                    display += f" - {record_row[3]}"
+                
+                results.append({
+                    'type': 'attribute',
+                    'id': record_row[0],
+                    'name': display,
+                    'display': display,
+                    'searchable_content': searchable_content
+                })
+        
+        elif table_name == 'files':
+            cursor.execute('''
+                SELECT id, file_path, description FROM files WHERE id = ?
+            ''', (record_id,))
+            record_row = cursor.fetchone()
+            if record_row:
+                display = record_row[1]  # file_path
+                if record_row[2]:  # description
+                    display += f" ({record_row[2]})"
+                
+                results.append({
+                    'type': 'file',
+                    'id': record_row[0],
+                    'name': display,
+                    'display': display,
+                    'searchable_content': searchable_content
+                })
     
     conn.close()
     return results
