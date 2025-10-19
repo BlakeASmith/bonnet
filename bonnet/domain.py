@@ -11,6 +11,7 @@ from ._input_models import (
     StoreFileInput,
     LinkInput,
 )
+from ._record_types import TYPE_TO_TABLE
 from . import database
 
 
@@ -259,15 +260,9 @@ def link(input: LinkInput) -> str:
     Returns:
         Edge ID if successful
     """
-    # Map record types to table names
-    type_to_table = {
-        'entity': 'entities',
-        'file': 'files',
-        'attribute': 'attributes'
-    }
-    
-    from_table = type_to_table.get(input.from_type)
-    to_table = type_to_table.get(input.to_type)
+    # Use centralized type mapping
+    from_table = TYPE_TO_TABLE.get(input.from_type)
+    to_table = TYPE_TO_TABLE.get(input.to_type)
     
     if not from_table:
         raise ValueError(f"Unknown record type: {input.from_type}")

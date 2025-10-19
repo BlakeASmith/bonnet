@@ -3,6 +3,7 @@ import os
 import uuid
 from contextlib import contextmanager
 from typing import List, Dict, Optional, Tuple, Callable
+from ._record_types import TYPE_TO_TABLE
 
 # Global database connection
 _config_dir = os.path.expanduser("~/.config/bonnet")
@@ -998,11 +999,7 @@ def search_records_by_type(record_type: str, query: str = "", limit: int = 10) -
     conn = sqlite3.connect(_db_path)
     cursor = conn.cursor()
     
-    table_name = {
-        'entity': 'entities',
-        'attribute': 'attributes', 
-        'file': 'files'
-    }.get(record_type)
+    table_name = TYPE_TO_TABLE.get(record_type)
     
     if not table_name:
         return []

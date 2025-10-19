@@ -2,6 +2,7 @@
 
 from typing import Optional, Literal
 from pydantic import BaseModel, Field, field_validator
+from ._record_types import get_valid_attribute_types, get_all_record_types
 
 
 class GetEntityContextInput(BaseModel):
@@ -22,7 +23,7 @@ class StoreEntityInput(BaseModel):
 
 class StoreAttributeInput(BaseModel):
     attr_id: str
-    attr_type: Literal["FACT", "REF", "TASK", "RULE"] = Field(..., description="Attribute type must be one of: FACT, REF, TASK, RULE")
+    attr_type: Literal[tuple(get_valid_attribute_types())] = Field(..., description=f"Attribute type must be one of: {', '.join(get_valid_attribute_types())}")
     subject: str
     detail: str
 
@@ -47,9 +48,9 @@ class StoreFileInput(BaseModel):
 
 
 class LinkInput(BaseModel):
-    from_type: str  # 'entity', 'file', 'attribute'
+    from_type: Literal[tuple(get_all_record_types())] = Field(..., description=f"Source record type must be one of: {', '.join(get_all_record_types())}")
     from_id: str
-    to_type: str    # 'entity', 'file', 'attribute'
+    to_type: Literal[tuple(get_all_record_types())] = Field(..., description=f"Target record type must be one of: {', '.join(get_all_record_types())}")
     to_id: str
     edge_type: str = "references"
     content: Optional[str] = None
