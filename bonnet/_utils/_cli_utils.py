@@ -19,12 +19,14 @@ def handle_errors(func):
     return wrapper
 
 
-def find_record_with_feedback(identifier: str) -> Optional[str]:
+def find_record_with_feedback(identifier: str, select_index: Optional[int] = None, auto_select_first: bool = False) -> Optional[str]:
     """
     Find a record and return its ID, with user feedback for ambiguous results.
     
     Args:
         identifier: Either a record ID or search query
+        select_index: If provided, select the record at this index (1-based)
+        auto_select_first: If True, automatically select the first match when ambiguous
         
     Returns:
         Record ID if found, None otherwise
@@ -38,11 +40,25 @@ def find_record_with_feedback(identifier: str) -> Optional[str]:
     if len(results) == 1:
         return results[0]['id']
     
-    # Multiple results - show them and ask for clarification
+    # Multiple results - handle based on options
+    if auto_select_first:
+        click.echo(f"Multiple records found for '{identifier}'. Auto-selecting first match: {results[0]['display']} ({results[0]['type']}:{results[0]['id']})", err=True)
+        return results[0]['id']
+    
+    if select_index is not None:
+        if 1 <= select_index <= len(results):
+            selected_result = results[select_index - 1]
+            click.echo(f"Selected record {select_index}: {selected_result['display']} ({selected_result['type']}:{selected_result['id']})", err=True)
+            return selected_result['id']
+        else:
+            click.echo(f"Invalid selection index {select_index}. Must be between 1 and {len(results)}", err=True)
+            return None
+    
+    # Show them and ask for clarification
     click.echo(f"Multiple records found for '{identifier}'. Did you mean one of these?", err=True)
     for i, result in enumerate(results[:5], 1):  # Show top 5 results
         click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
-    click.echo("Please be more specific or use the exact ID.", err=True)
+    click.echo("Please be more specific, use the exact ID, or use --select-index to choose by number.", err=True)
     return None
 
 
