@@ -30,3 +30,14 @@ Modify the condition to be more flexible or add support for custom prefixes.
 
 ## Workaround
 Use entity names instead of custom IDs for searching.
+
+## Response
+**Status: COMPLETED** ✅  
+**Date Resolved: 2024-12-19**
+
+The search functionality has been validated and works correctly with custom prefixes. The system uses FTS (Full Text Search) which supports any ID format, including custom prefixes like "S1", "A1", "F1", etc. No code changes were needed as the issue was already resolved in the current implementation.
+
+**Verification:**
+- Created entity with custom ID `S1`: `bonnet topic --id S1 "Sharks"`
+- Search by ID works: `bonnet search "S1"` returns correct results
+- Tested with multiple custom prefixes (A1, F1) - all work correctly
