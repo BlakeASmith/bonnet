@@ -19,14 +19,13 @@ def handle_errors(func):
     return wrapper
 
 
-def find_record_with_feedback(identifier: str, select_index: Optional[int] = None, auto_select_first: bool = False) -> Optional[str]:
+def find_record_with_feedback(identifier: str, select_index: Optional[int] = None) -> Optional[str]:
     """
     Find a record and return its ID, with user feedback for ambiguous results.
     
     Args:
         identifier: Either a record ID or search query
         select_index: If provided, select the record at this index (1-based)
-        auto_select_first: If True, automatically select the first match when ambiguous
         
     Returns:
         Record ID if found, None otherwise
@@ -41,10 +40,6 @@ def find_record_with_feedback(identifier: str, select_index: Optional[int] = Non
         return results[0]['id']
     
     # Multiple results - handle based on options
-    if auto_select_first:
-        click.echo(f"Multiple records found for '{identifier}'. Auto-selecting first match: {results[0]['display']} ({results[0]['type']}:{results[0]['id']})", err=True)
-        return results[0]['id']
-    
     if select_index is not None:
         if 1 <= select_index <= len(results):
             selected_result = results[select_index - 1]
