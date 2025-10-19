@@ -11,7 +11,7 @@ from ._input_models import (
     LinkInput,
 )
 from . import domain
-from ._utils._cli_utils import handle_errors
+from ._utils._cli_utils import handle_errors, find_record_with_feedback, search_and_display_records
 
 
 assembler = xml_assembler()
@@ -37,16 +37,41 @@ def topic(id, text):
     click.echo(f"Stored topic '{text}' with ID {actual_id}")
 
 @cli.command()
-@click.option('--about', required=True, help='Entity ID to link to')
+@click.option('--about', required=True, help='Record ID or search query to link to')
 @click.option('--type', 'attr_type', required=True, help='Attribute type (FACT, REF, etc.)')
 @click.option('--subject', required=True, help='Subject text')
 @click.argument('detail')
 @handle_errors
 def attr(about, attr_type, subject, detail):
-    """Store an attribute"""
-    input_model = StoreAttributeInput(attr_id=about, attr_type=attr_type, subject=subject, detail=detail)
+    """Store an attribute
+    
+    You can use either a record ID or search query for the --about option.
+    The system will automatically find the matching record.
+    
+    Examples:
+        attr --about T1 --type FACT --subject color "red"     # Using record ID
+        attr --about "car" --type FACT --subject color "red"  # Using search query
+        attr --about "bike" --type FACT --subject type "mountain"  # Link to any record
+    """
+    # Find the target record
+    results = domain.search_records(about)
+    if not results:
+        click.echo(f"No records found matching '{about}'", err=True)
+        return
+    
+    if len(results) > 1:
+        click.echo(f"Multiple records found for '{about}'. Did you mean one of these?", err=True)
+        for i, result in enumerate(results[:5], 1):
+            click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
+        click.echo("Please be more specific or use the exact ID.", err=True)
+        return
+    
+    # Use the single result
+    target_record = results[0]
+    
+    input_model = StoreAttributeInput(attr_id=target_record['id'], attr_type=attr_type, subject=subject, detail=detail)
     domain.store_attribute(input_model)
-    click.echo(f"Stored {attr_type} attribute for entity {about}")
+    click.echo(f"Stored {attr_type} attribute for {target_record['type']} {target_record['id']} ({target_record['display']})")
 
 @cli.command()
 @click.option('--id', required=True, help='Unique File ID')
@@ -60,31 +85,77 @@ def file(id, description, file_path):
     click.echo(f"Stored file '{file_path}' with ID {id}")
 
 @cli.command()
-@click.option('--from-type', required=True, type=click.Choice(['entity', 'file', 'attribute']), help='Source record type')
-@click.option('--from-id', required=True, help='Source record ID')
-@click.option('--to-type', required=True, type=click.Choice(['entity', 'file', 'attribute']), help='Target record type')
-@click.option('--to-id', required=True, help='Target record ID')
 @click.option('--type', 'edge_type', default='references', help='Edge type (default: references)')
 @click.option('--content', help='Edge content description')
+@click.argument('from_identifier')
+@click.argument('to_identifier')
 @handle_errors
-def link(from_type, from_id, to_type, to_id, edge_type, content):
-    """Create a link between any two records"""
+def link(from_identifier, to_identifier, edge_type, content):
+    """Create a link between any two records
+    
+    You can use either record IDs or search queries for the source and target.
+    The system will automatically detect the record types.
+    
+    Examples:
+        link "car" "black"                    # Link car entity to black attribute
+        link T1 T2                           # Link entity T1 to entity T2
+        link "bike" "red color"              # Link bike to red color attribute
+    """
+    # Find source record
+    from_results = domain.search_records(from_identifier)
+    if not from_results:
+        click.echo(f"No records found matching '{from_identifier}'", err=True)
+        return
+    
+    if len(from_results) > 1:
+        click.echo(f"Multiple records found for '{from_identifier}'. Did you mean one of these?", err=True)
+        for i, result in enumerate(from_results[:5], 1):
+            click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
+        click.echo("Please be more specific or use the exact ID.", err=True)
+        return
+    
+    from_record = from_results[0]
+    
+    # Find target record
+    to_results = domain.search_records(to_identifier)
+    if not to_results:
+        click.echo(f"No records found matching '{to_identifier}'", err=True)
+        return
+    
+    if len(to_results) > 1:
+        click.echo(f"Multiple records found for '{to_identifier}'. Did you mean one of these?", err=True)
+        for i, result in enumerate(to_results[:5], 1):
+            click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
+        click.echo("Please be more specific or use the exact ID.", err=True)
+        return
+    
+    to_record = to_results[0]
+    
     input_model = LinkInput(
-        from_type=from_type,
-        from_id=from_id,
-        to_type=to_type,
-        to_id=to_id,
+        from_type=from_record['type'],
+        from_id=from_record['id'],
+        to_type=to_record['type'],
+        to_id=to_record['id'],
         edge_type=edge_type,
         content=content
     )
     edge_id = domain.link(input_model)
-    click.echo(f"Created edge {edge_id} linking {from_type}:{from_id} to {to_type}:{to_id}")
+    click.echo(f"Created edge {edge_id} linking {from_record['type']}:{from_record['id']} to {to_record['type']}:{to_record['id']}")
 
 @cli.command()
-@click.option('--about', required=True, help='Search query')
+@click.option('--about', required=True, help='Entity ID or search query')
 @handle_errors
 def context(about):
-    """Search and generate context"""
+    """Search and generate context for entities
+    
+    You can use either an entity ID or search query for the --about option.
+    The system will find matching entities and display their context.
+    
+    Examples:
+        context --about T1                    # Using entity ID
+        context --about "car"                 # Using search query
+        context --about "red color"           # Using search query
+    """
     input_model = SearchEntitiesInput(query=about)
     context_tree = domain.search_entities(input_model)
     
@@ -95,3 +166,16 @@ def context(about):
     
     # Display the context tree
     display_context(context_tree)
+
+@cli.command()
+@click.option('--limit', default=10, help='Maximum number of results to show (default: 10)')
+@click.argument('query')
+@handle_errors
+def search(limit, query):
+    """Search for records by content across all record types
+    
+    Examples:
+        search "car"      # Search for records containing "car"
+        search "color"    # Search for records containing "color"
+    """
+    search_and_display_records(query, limit)

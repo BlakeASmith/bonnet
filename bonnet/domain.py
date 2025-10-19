@@ -1,7 +1,7 @@
 """Domain layer that returns Pydantic models after database fetches."""
 
 from ._models import ContextTree, Node, Edge, build_model_from_record
-from typing import Dict
+from typing import Dict, List, Optional
 from ._input_models import (
     SearchInput,
     SearchEntitiesInput,
@@ -263,4 +263,17 @@ def link(input: LinkInput) -> str:
         input.edge_type,
         input.content
     )
+
+
+def search_records(query: str) -> List[Dict]:
+    """
+    Search for records by content or ID.
+    
+    Args:
+        query: Search query string or record ID
+        
+    Returns:
+        List of matching records
+    """
+    return database.search_records(query)
 
