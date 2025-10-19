@@ -193,7 +193,7 @@ def search(limit, query):
 
 @cli.command()
 @click.option('--shell', type=click.Choice(['bash', 'zsh', 'fish'], case_sensitive=False), 
-              default='bash', help='Shell type for completion script')
+              help='Shell type for completion script (auto-detected from $SHELL if not specified)')
 @click.option('--output', '-o', help='Output file path (default: stdout)')
 def completion(shell, output):
     """Generate shell completion script for bonnet
@@ -204,14 +204,14 @@ def completion(shell, output):
     Setup Instructions:
     
     For Bash:
-        bonnet completion --shell bash > ~/.bonnet-complete.bash
-        echo "source ~/.bonnet-complete.bash" >> ~/.bashrc
-        source ~/.bashrc
+        eval "$(bonnet completion --shell bash)"
+        # Or add to ~/.bashrc:
+        echo 'eval "$(bonnet completion --shell bash)"' >> ~/.bashrc
     
     For Zsh:
-        bonnet completion --shell zsh > ~/.bonnet-complete.zsh
-        echo "source ~/.bonnet-complete.zsh" >> ~/.zshrc
-        source ~/.zshrc
+        eval "$(bonnet completion --shell zsh)"
+        # Or add to ~/.zshrc:
+        echo 'eval "$(bonnet completion --shell zsh)"' >> ~/.zshrc
     
     For Fish:
         bonnet completion --shell fish > ~/.config/fish/completions/bonnet.fish
@@ -221,6 +221,19 @@ def completion(shell, output):
     """
     import os
     import sys
+    
+    # Auto-detect shell if not specified
+    if not shell:
+        shell_env = os.environ.get('SHELL', '').lower()
+        if 'bash' in shell_env:
+            shell = 'bash'
+        elif 'zsh' in shell_env:
+            shell = 'zsh'
+        elif 'fish' in shell_env:
+            shell = 'fish'
+        else:
+            shell = 'bash'  # Default to bash
+        click.echo(f"# Auto-detected shell: {shell}")
     
     # Generate the completion script using Click's built-in completion
     try:
