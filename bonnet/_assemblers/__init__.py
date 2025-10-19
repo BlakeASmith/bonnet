@@ -1,6 +1,6 @@
 from typing import Protocol, Union
 
-from .._models import Entity, ContextTree, SearchResult, Attribute, File
+from .._models import Entity, ContextTree, SearchResult, Attribute, File, Snippet
 from typing import List
 
 
@@ -35,6 +35,35 @@ def xml_assembler() -> Assembler:
                 # File with no description or content
                 return f"<file id=\"{file.id}\" path=\"{file.file_path}\"></file>"
         
+        def assemble_snippet(snippet: Snippet, indent: str) -> str:
+            # Determine the tag name - use custom tag from metadata if present
+            tag_name = "snippet"
+            if snippet.metadata and 'tag' in snippet.metadata:
+                tag_name = str(snippet.metadata['tag'])
+            
+            # Build XML attributes from metadata
+            attrs = [f'id="{snippet.id}"', f'path="{snippet.file_path}"']
+            
+            if snippet.metadata:
+                for key, value in snippet.metadata.items():
+                    # Skip the 'tag' field as it's used for the element name, not an attribute
+                    if key == 'tag':
+                        continue
+                    # Convert value to string and escape quotes
+                    value_str = str(value).replace('"', '&quot;')
+                    attrs.append(f'{key}="{value_str}"')
+            
+            # Create the element with custom tag name and attributes
+            element_tag = f"<{tag_name} {' '.join(attrs)}>"
+            
+            # Add content
+            lines = [element_tag]
+            if snippet.content:
+                lines.append(f"{indent}  {snippet.content}")
+            lines.append(f"{indent}</{tag_name}>")
+            
+            return "\n".join(lines)
+        
         lines = ["<context>"]
         
         # Recursively assemble the tree structure
@@ -62,6 +91,10 @@ def xml_assembler() -> Assembler:
             elif tree.type == 'file' and tree.data:
                 file = tree.data
                 result_lines.append(f"{indent}{assemble_file(file, indent)}")
+            
+            elif tree.type == 'snippet' and tree.data:
+                snippet = tree.data
+                result_lines.append(f"{indent}{assemble_snippet(snippet, indent)}")
             
             elif tree.type == 'root':
                 # For root nodes, process all children
