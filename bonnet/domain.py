@@ -181,7 +181,8 @@ def search_entities(input: SearchEntitiesInput) -> ContextTree:
         ContextTree containing matching entities and their context
     """
     # Use the existing search function with default parameters
-    search_input = SearchInput(query=input.query, include_related=True, max_depth=1)
+    # Use max_depth=10 to include related entities and their attributes at multiple levels
+    search_input = SearchInput(query=input.query, include_related=True, max_depth=10)
     return search(search_input)
 
 
