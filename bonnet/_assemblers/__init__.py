@@ -36,23 +36,31 @@ def xml_assembler() -> Assembler:
                 return f"<file id=\"{file.id}\" path=\"{file.file_path}\"></file>"
         
         def assemble_snippet(snippet: Snippet, indent: str) -> str:
+            # Determine the tag name - use custom tag from metadata if present
+            tag_name = "snippet"
+            if snippet.metadata and 'tag' in snippet.metadata:
+                tag_name = str(snippet.metadata['tag'])
+            
             # Build XML attributes from metadata
             attrs = [f'id="{snippet.id}"', f'path="{snippet.file_path}"']
             
             if snippet.metadata:
                 for key, value in snippet.metadata.items():
+                    # Skip the 'tag' field as it's used for the element name, not an attribute
+                    if key == 'tag':
+                        continue
                     # Convert value to string and escape quotes
                     value_str = str(value).replace('"', '&quot;')
                     attrs.append(f'{key}="{value_str}"')
             
-            # Create the snippet element with attributes
-            snippet_tag = f"<snippet {' '.join(attrs)}>"
+            # Create the element with custom tag name and attributes
+            element_tag = f"<{tag_name} {' '.join(attrs)}>"
             
             # Add content
-            lines = [snippet_tag]
+            lines = [element_tag]
             if snippet.content:
                 lines.append(f"{indent}  {snippet.content}")
-            lines.append(f"{indent}</snippet>")
+            lines.append(f"{indent}</{tag_name}>")
             
             return "\n".join(lines)
         
