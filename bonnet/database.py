@@ -192,25 +192,26 @@ def init_database():
 @searchable_builder('entities')
 def build_entity_searchable_content(record_data: dict) -> str:
     """Build searchable content for an entity node."""
-    return record_data.get('name', '')
+    content_parts = [record_data.get('id', ''), record_data.get('name', '')]
+    return ' '.join(filter(None, content_parts))
 
 @searchable_builder('attributes')
 def build_attribute_searchable_content(record_data: dict) -> str:
     """Build searchable content for an attribute node."""
-    content_parts = [record_data.get('type', '')]
+    content_parts = [record_data.get('id', ''), record_data.get('type', '')]
     if record_data.get('subject'):
         content_parts.append(record_data['subject'])
     if record_data.get('detail'):
         content_parts.append(record_data['detail'])
-    return ' '.join(content_parts)
+    return ' '.join(filter(None, content_parts))
 
 @searchable_builder('files')
 def build_file_searchable_content(record_data: dict) -> str:
     """Build searchable content for a file node."""
-    content_parts = [record_data.get('file_path', '')]
+    content_parts = [record_data.get('id', ''), record_data.get('file_path', '')]
     if record_data.get('description'):
         content_parts.append(record_data['description'])
-    return ' '.join(content_parts)
+    return ' '.join(filter(None, content_parts))
 
 def create_node(table_name: str, record_id: str, record_data: dict) -> str:
     """Create a node for any table record using registered builder."""
@@ -790,75 +791,7 @@ def search_records(query: str) -> List[Dict]:
     
     results = []
     
-    # First try to find by exact record_id in nodes table
-    cursor.execute('''
-        SELECT n.id, n.table_name, n.record_id, n.searchable_content
-        FROM nodes n
-        WHERE n.record_id = ?
-    ''', (query,))
-    
-    row = cursor.fetchone()
-    if row:
-        node_id, table_name, record_id, searchable_content = row
-        
-        # Get the actual record data based on table_name
-        if table_name == 'entities':
-            cursor.execute('''
-                SELECT id, name FROM entities WHERE id = ?
-            ''', (record_id,))
-            record_row = cursor.fetchone()
-            if record_row:
-                results.append({
-                    'type': 'entity',
-                    'id': record_row[0],
-                    'name': record_row[1],
-                    'display': record_row[1],
-                    'searchable_content': searchable_content
-                })
-                conn.close()
-                return results
-        
-        elif table_name == 'attributes':
-            cursor.execute('''
-                SELECT id, type, subject, detail FROM attributes WHERE id = ?
-            ''', (record_id,))
-            record_row = cursor.fetchone()
-            if record_row:
-                display = f"{record_row[1]}: {record_row[2]}" if record_row[2] else record_row[1]
-                if record_row[3]:  # detail
-                    display += f" - {record_row[3]}"
-                
-                results.append({
-                    'type': 'attribute',
-                    'id': record_row[0],
-                    'name': display,
-                    'display': display,
-                    'searchable_content': searchable_content
-                })
-                conn.close()
-                return results
-        
-        elif table_name == 'files':
-            cursor.execute('''
-                SELECT id, file_path, description FROM files WHERE id = ?
-            ''', (record_id,))
-            record_row = cursor.fetchone()
-            if record_row:
-                display = record_row[1]  # file_path
-                if record_row[2]:  # description
-                    display += f" ({record_row[2]})"
-                
-                results.append({
-                    'type': 'file',
-                    'id': record_row[0],
-                    'name': display,
-                    'display': display,
-                    'searchable_content': searchable_content
-                })
-                conn.close()
-                return results
-    
-    # If no exact ID match, search by content using nodes table
+    # Search using FTS on nodes table - this will match both IDs and content
     cursor.execute('''
         SELECT n.id, n.table_name, n.record_id, n.searchable_content
         FROM nodes n
