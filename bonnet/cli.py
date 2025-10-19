@@ -37,7 +37,7 @@ def topic(id, text):
     click.echo(f"Stored topic '{text}' with ID {actual_id}")
 
 @cli.command()
-@click.option('--about', required=True, help='Entity ID or search query to link to')
+@click.option('--about', required=True, help='Record ID or search query to link to')
 @click.option('--type', 'attr_type', required=True, help='Attribute type (FACT, REF, etc.)')
 @click.option('--subject', required=True, help='Subject text')
 @click.argument('detail')
@@ -45,40 +45,33 @@ def topic(id, text):
 def attr(about, attr_type, subject, detail):
     """Store an attribute
     
-    You can use either an entity ID or search query for the --about option.
-    The system will automatically find the matching entity.
+    You can use either a record ID or search query for the --about option.
+    The system will automatically find the matching record.
     
     Examples:
-        attr --about T1 --type FACT --subject color "red"     # Using entity ID
+        attr --about T1 --type FACT --subject color "red"     # Using record ID
         attr --about "car" --type FACT --subject color "red"  # Using search query
+        attr --about "bike" --type FACT --subject type "mountain"  # Link to any record
     """
-    # Find the entity record
+    # Find the target record
     results = domain.search_records(about)
     if not results:
         click.echo(f"No records found matching '{about}'", err=True)
         return
     
-    # Filter for entities only
-    entity_results = [result for result in results if result['type'] == 'entity']
-    
-    if not entity_results:
-        click.echo(f"No entities found matching '{about}'", err=True)
-        click.echo("The --about option must reference an entity record.", err=True)
-        return
-    
-    if len(entity_results) > 1:
-        click.echo(f"Multiple entities found for '{about}'. Did you mean one of these?", err=True)
-        for i, result in enumerate(entity_results[:5], 1):
+    if len(results) > 1:
+        click.echo(f"Multiple records found for '{about}'. Did you mean one of these?", err=True)
+        for i, result in enumerate(results[:5], 1):
             click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
         click.echo("Please be more specific or use the exact ID.", err=True)
         return
     
-    # Use the single entity result
-    entity_record = entity_results[0]
+    # Use the single result
+    target_record = results[0]
     
-    input_model = StoreAttributeInput(attr_id=entity_record['id'], attr_type=attr_type, subject=subject, detail=detail)
+    input_model = StoreAttributeInput(attr_id=target_record['id'], attr_type=attr_type, subject=subject, detail=detail)
     domain.store_attribute(input_model)
-    click.echo(f"Stored {attr_type} attribute for entity {entity_record['id']} ({entity_record['display']})")
+    click.echo(f"Stored {attr_type} attribute for {target_record['type']} {target_record['id']} ({target_record['display']})")
 
 @cli.command()
 @click.option('--id', required=True, help='Unique File ID')
