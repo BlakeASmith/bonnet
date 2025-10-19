@@ -1,0 +1,50 @@
+<context>
+  <entity id="S1" name="Sharks">
+  </entity>
+  <entity id="S2" name="Shark Species">
+  </entity>
+  <entity id="S3" name="Shark Anatomy">
+  </entity>
+  <entity id="S4" name="Shark Behavior">
+  </entity>
+  <entity id="S5" name="Shark Conservation">
+  </entity>
+  <entity id="T1" name="Sharks">
+    <attribute id="T1-a4e0d4b6" type="FACT">Classification:Cartilaginous fish in the class Chondrichthyes, subclass Elasmobranchii</attribute>
+    <attribute id="T1-97b60db6" type="FACT">Total Species:Over 500 known species of sharks</attribute>
+    <attribute id="T1-395bb2bf" type="FACT">Size Range:From 6 inches (dwarf lantern shark) to 40+ feet (whale shark)</attribute>
+    <attribute id="T1-e932fc89" type="FACT">Habitat:Found in all oceans from shallow coastal waters to depths of 6,000+ feet</attribute>
+    <attribute id="T1-75c038e9" type="FACT">Evolution:Sharks have existed for over 400 million years, predating dinosaurs</attribute>
+    <attribute id="T1-231ef0c0" type="REF">Source:National Geographic Shark Facts</attribute>
+    <attribute id="T1-636e58e3" type="REF">Source:Shark Research Institute</attribute>
+    <entity id="T2" name="Shark Species">
+    </entity>
+    <entity id="T3" name="Shark Anatomy">
+    </entity>
+    <entity id="T4" name="Shark Behavior">
+    </entity>
+  </entity>
+  <entity id="T5" name="Shark Conservation">
+    <attribute id="T5-8b8e5eda" type="FACT">Threats:Overfishing, bycatch, habitat destruction, climate change, shark finning</attribute>
+    <attribute id="T5-becfc442" type="FACT">Population Decline:Many species have declined by 70-90% in recent decades</attribute>
+    <attribute id="T5-0bf2ac20" type="FACT">Protection:Some species protected by CITES, marine protected areas, fishing regulations</attribute>
+    <attribute id="T5-3a33f9b8" type="FACT">Ecosystem Role:Top predators that maintain ocean ecosystem balance</attribute>
+    <attribute id="T5-01d924df" type="FACT">Economic Value:Ecotourism generates billions annually - sharks worth more alive than dead</attribute>
+  </entity>
+  <attribute id="T2-91cb188e" type="FACT">Major Orders:8 orders including Carcharhiniformes (requiem sharks), Lamniformes (mackerel sharks), Orectolobiformes (carpet sharks)</attribute>
+  <attribute id="T2-46378b0e" type="FACT">Largest Species:Whale shark (Rhincodon typus) - up to 40+ feet, filter feeder</attribute>
+  <attribute id="T2-90de4446" type="FACT">Most Dangerous:Great white shark, tiger shark, bull shark - responsible for most attacks</attribute>
+  <attribute id="T2-a8bd7e37" type="FACT">Smallest Species:Dwarf lantern shark (Etmopterus perryi) - only 6-8 inches long</attribute>
+  <attribute id="T2-eb0fea50" type="FACT">Deep Sea Species:Goblin shark, frilled shark, sixgill shark - found at extreme depths</attribute>
+  <entity id="T6" name="Shark Attacks">
+    <attribute id="T6-dbb7eb61" type="FACT">Frequency:Extremely rare - more people killed by lightning than sharks annually</attribute>
+    <attribute id="T6-11540f3e" type="FACT">Causes:Usually mistaken identity, territorial defense, or investigative bites</attribute>
+    <attribute id="T6-2b9f5bf5" type="FACT">Prevention:Avoid swimming at dawn/dusk, don't wear shiny jewelry, stay in groups</attribute>
+  </entity>
+  <entity id="T7" name="Shark Research">
+    <attribute id="T7-ecfaeac7" type="FACT">Tagging:Satellite tags track migration patterns and behavior</attribute>
+    <attribute id="T7-fd15c7d0" type="FACT">Technology:Underwater cameras, acoustic tracking, DNA analysis</attribute>
+  </entity>
+  <entity id="T8" name="Shark Mythology">
+  </entity>
+</context>

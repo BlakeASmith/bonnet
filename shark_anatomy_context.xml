@@ -1,0 +1,11 @@
+<context>
+  <entity id="S3" name="Shark Anatomy">
+  </entity>
+  <entity id="T3" name="Shark Anatomy">
+    <attribute id="T3-47020de1" type="FACT">Skeleton:Cartilaginous skeleton instead of bone - lighter and more flexible</attribute>
+    <attribute id="T3-26334fae" type="FACT">Teeth:Multiple rows of replaceable teeth - can lose and replace thousands in lifetime</attribute>
+    <attribute id="T3-bd61e061" type="FACT">Skin:Dermal denticles - tooth-like scales that reduce drag and provide protection</attribute>
+    <attribute id="T3-aa639ce9" type="FACT">Fins:Dorsal fin, pectoral fins, pelvic fins, anal fin, caudal fin - provide stability and propulsion</attribute>
+    <attribute id="T3-ef80f8da" type="FACT">Senses:Electroreception (ampullae of Lorenzini), lateral line system, excellent smell and hearing</attribute>
+  </entity>
+</context>

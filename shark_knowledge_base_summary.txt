@@ -1,0 +1,62 @@
+COMPREHENSIVE SHARK KNOWLEDGE BASE
+=====================================
+
+GENERAL SHARK INFORMATION
+-------------------------
+• Classification: Cartilaginous fish in the class Chondrichthyes, subclass Elasmobranchii
+• Total Species: Over 500 known species of sharks
+• Size Range: From 6 inches (dwarf lantern shark) to 40+ feet (whale shark)
+• Habitat: Found in all oceans from shallow coastal waters to depths of 6,000+ feet
+• Evolution: Sharks have existed for over 400 million years, predating dinosaurs
+• Sources: National Geographic Shark Facts, Shark Research Institute
+
+SHARK SPECIES
+-------------
+• Major Orders: 8 orders including Carcharhiniformes (requiem sharks), Lamniformes (mackerel sharks), Orectolobiformes (carpet sharks)
+• Largest Species: Whale shark (Rhincodon typus) - up to 40+ feet, filter feeder
+• Most Dangerous: Great white shark, tiger shark, bull shark - responsible for most attacks
+• Smallest Species: Dwarf lantern shark (Etmopterus perryi) - only 6-8 inches long
+• Deep Sea Species: Goblin shark, frilled shark, sixgill shark - found at extreme depths
+
+SHARK ANATOMY
+-------------
+• Skeleton: Cartilaginous skeleton instead of bone - lighter and more flexible
+• Teeth: Multiple rows of replaceable teeth - can lose and replace thousands in lifetime
+• Skin: Dermal denticles - tooth-like scales that reduce drag and provide protection
+• Fins: Dorsal fin, pectoral fins, pelvic fins, anal fin, caudal fin - provide stability and propulsion
+• Senses: Electroreception (ampullae of Lorenzini), lateral line system, excellent smell and hearing
+
+SHARK BEHAVIOR
+--------------
+• Swimming: Must keep moving to breathe - ram ventilation or buccal pumping
+• Hunting: Ambush predators, use stealth and speed to catch prey
+• Migration: Many species migrate thousands of miles following food sources
+• Social Behavior: Some species are solitary, others form schools or aggregations
+• Reproduction: Internal fertilization, some lay eggs (oviparous), others give live birth (viviparous)
+
+SHARK CONSERVATION
+------------------
+• Threats: Overfishing, bycatch, habitat destruction, climate change, shark finning
+• Population Decline: Many species have declined by 70-90% in recent decades
+• Protection: Some species protected by CITES, marine protected areas, fishing regulations
+• Ecosystem Role: Top predators that maintain ocean ecosystem balance
+• Economic Value: Ecotourism generates billions annually - sharks worth more alive than dead
+
+SHARK ATTACKS
+-------------
+• Frequency: Extremely rare - more people killed by lightning than sharks annually
+• Causes: Usually mistaken identity, territorial defense, or investigative bites
+• Prevention: Avoid swimming at dawn/dusk, don't wear shiny jewelry, stay in groups
+
+SHARK RESEARCH
+--------------
+• Tagging: Satellite tags track migration patterns and behavior
+• Technology: Underwater cameras, acoustic tracking, DNA analysis
+
+RELATIONSHIPS
+-------------
+• Sharks have many different species (T1 → T2)
+• Sharks have unique anatomical features (T1 → T3)
+• Sharks display various behaviors (T1 → T4)
+
+This knowledge base was created using Bonnet, a structured knowledge management system that stores information as entities, attributes, and relationships in a knowledge graph format.
