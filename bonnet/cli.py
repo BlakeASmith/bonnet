@@ -36,7 +36,8 @@ def cli():
     A CLI tool for managing structured knowledge base (memory) and preparing 
     highly compressed XML context.
     
-    For shell completion setup, run:
+    Shell Completion:
+        Enable intelligent tab completion by running:
         bonnet completion --help
     """
     pass
@@ -197,10 +198,26 @@ def search(limit, query):
 def completion(shell, output):
     """Generate shell completion script for bonnet
     
-    Examples:
+    This command generates shell completion scripts that provide intelligent
+    tab completion for all bonnet commands and options.
+    
+    Setup Instructions:
+    
+    For Bash:
         bonnet completion --shell bash > ~/.bonnet-complete.bash
+        echo "source ~/.bonnet-complete.bash" >> ~/.bashrc
+        source ~/.bashrc
+    
+    For Zsh:
         bonnet completion --shell zsh > ~/.bonnet-complete.zsh
+        echo "source ~/.bonnet-complete.zsh" >> ~/.zshrc
+        source ~/.zshrc
+    
+    For Fish:
         bonnet completion --shell fish > ~/.config/fish/completions/bonnet.fish
+        # Fish automatically loads completions from this directory
+    
+    After setup, type 'bonnet ' and press TAB to see available completions.
     """
     import os
     import sys
@@ -209,15 +226,15 @@ def completion(shell, output):
     try:
         if shell.lower() == 'bash':
             script = f"""# bash completion for bonnet
-eval "$(_BONNET_COMPLETE=bash_source python3 -m bonnet)"
+eval "$(_BONNET_COMPLETE=bash_source bonnet)"
 """
         elif shell.lower() == 'zsh':
             script = f"""# zsh completion for bonnet
-eval "$(_BONNET_COMPLETE=zsh_source python3 -m bonnet)"
+eval "$(_BONNET_COMPLETE=zsh_source bonnet)"
 """
         elif shell.lower() == 'fish':
             script = f"""# fish completion for bonnet
-eval (env _BONNET_COMPLETE=fish_source python3 -m bonnet)
+eval (env _BONNET_COMPLETE=fish_source bonnet)
 """
         else:
             click.echo(f"Unsupported shell: {shell}", err=True)
