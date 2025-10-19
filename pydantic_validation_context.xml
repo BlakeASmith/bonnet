@@ -1,0 +1,26 @@
+<context>
+  <entity id="P2" name="Pydantic Data Validation">
+    <attribute id="P2-08e8bd01" type="FACT">Core Principle:Pydantic validates data using Python type hints and provides detailed error messages when validation fails</attribute>
+    <attribute id="P2-4953b3e4" type="FACT">Validation Types:Built-in validators for str, int, float, bool, datetime, UUID, EmailStr, and custom types</attribute>
+    <attribute id="P2-9a261ee0" type="FACT">Error Handling:ValidationError provides detailed information about what went wrong and where in the data structure</attribute>
+    <attribute id="P2-455d8c2f" type="FACT">Custom Validators:Use @field_validator and @model_validator decorators to create custom validation logic</attribute>
+    <entity id="P6" name="Pydantic Advanced Features">
+      <attribute id="P6-800e3b8a" type="FACT">Field Validators:Use @field_validator decorator to create custom validation logic for individual fields</attribute>
+      <attribute id="P6-a252ac8c" type="FACT">Model Validators:Use @model_validator decorator for validation that requires access to multiple fields</attribute>
+      <attribute id="P6-38f80385" type="FACT">Generic Models:Use Generic[TypeVar] to create reusable models with type parameters</attribute>
+      <attribute id="P6-c42b58fd" type="FACT">Root Validators:Use @model_validator(mode='before') for validation before field validation occurs</attribute>
+      <entity id="P8" name="Pydantic Best Practices">
+        <attribute id="P8-b2366433" type="FACT">Model Design:Keep models focused, use composition over inheritance, and prefer explicit field definitions</attribute>
+        <attribute id="P8-18f95084" type="FACT">Validation Strategy:Use built-in validators when possible, create custom validators for complex business logic</attribute>
+        <attribute id="P8-31cb2ada" type="FACT">Error Handling:Always handle ValidationError exceptions and provide meaningful error messages to users</attribute>
+        <attribute id="P8-6c5e2c90" type="FACT">Performance:Use model_config for performance tuning, avoid unnecessary validation, and consider caching</attribute>
+        <entity id="P9" name="Pydantic Performance Optimization">
+          <attribute id="P9-67417f1d" type="FACT">Model Config:Use model_config to optimize performance with validate_assignment, arbitrary_types_allowed, and other options</attribute>
+          <attribute id="P9-a5e0d62e" type="FACT">Validation Modes:Use mode='json' for faster JSON parsing, mode='python' for Python object validation</attribute>
+          <attribute id="P9-b0564c53" type="FACT">Caching:Pydantic v2 includes built-in caching for validators and serializers to improve performance</attribute>
+          <attribute id="P9-6c815a54" type="FACT">Memory Usage:Use __slots__ and avoid storing large objects in model instances to reduce memory footprint</attribute>
+        </entity>
+      </entity>
+    </entity>
+  </entity>
+</context>

@@ -1,0 +1,14 @@
+<context>
+  <entity id="P3" name="Pydantic Models and Fields">
+    <attribute id="P3-78f79568" type="FACT">BaseModel:BaseModel is the main class that all Pydantic models inherit from, providing validation and serialization capabilities</attribute>
+    <attribute id="P3-649f4eb3" type="FACT">Field Types:Fields can be defined with type hints, default values, Field() function for constraints, and validation rules</attribute>
+    <attribute id="P3-339fe90c" type="FACT">Field Constraints:Use Field() with min_length, max_length, regex, gt, lt, ge, le for validation constraints</attribute>
+    <attribute id="P3-bf9662ea" type="FACT">Optional Fields:Use Optional[Type] or Type | None for optional fields, with default=None or custom defaults</attribute>
+    <entity id="P4" name="Pydantic Serialization">
+      <attribute id="P4-e8b88f47" type="FACT">JSON Serialization:Use .model_dump() to convert models to dictionaries and .model_dump_json() for JSON strings</attribute>
+      <attribute id="P4-a414bcd9" type="FACT">Model Creation:Use ModelClass(**data) or ModelClass.model_validate(data) to create instances from dictionaries</attribute>
+      <attribute id="P4-329589d9" type="FACT">Serialization Options:Use exclude, include, and by_alias parameters to control what fields are serialized</attribute>
+      <attribute id="P4-9a129703" type="FACT">Aliases:Use Field(alias='name') or model_config['alias_generator'] to customize field names in serialization</attribute>
+    </entity>
+  </entity>
+</context>

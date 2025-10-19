@@ -1,0 +1,20 @@
+<context>
+  <entity id="P7" name="Pydantic Integration Patterns">
+    <attribute id="P7-a5e03476" type="FACT">FastAPI Integration:Pydantic models are the foundation of FastAPI for request/response validation and automatic API documentation</attribute>
+    <attribute id="P7-e27b0e76" type="FACT">Database Integration:Use with SQLAlchemy, Tortoise ORM, or other ORMs for type-safe database operations</attribute>
+    <attribute id="P7-9e51525b" type="FACT">API Development:Perfect for REST APIs, GraphQL, and microservices with automatic request/response validation</attribute>
+    <attribute id="P7-1c2ad8be" type="FACT">Data Processing:Use for ETL pipelines, data transformation, and ensuring data quality in Python applications</attribute>
+    <entity id="P8" name="Pydantic Best Practices">
+      <attribute id="P8-b2366433" type="FACT">Model Design:Keep models focused, use composition over inheritance, and prefer explicit field definitions</attribute>
+      <attribute id="P8-18f95084" type="FACT">Validation Strategy:Use built-in validators when possible, create custom validators for complex business logic</attribute>
+      <attribute id="P8-31cb2ada" type="FACT">Error Handling:Always handle ValidationError exceptions and provide meaningful error messages to users</attribute>
+      <attribute id="P8-6c5e2c90" type="FACT">Performance:Use model_config for performance tuning, avoid unnecessary validation, and consider caching</attribute>
+      <entity id="P9" name="Pydantic Performance Optimization">
+        <attribute id="P9-67417f1d" type="FACT">Model Config:Use model_config to optimize performance with validate_assignment, arbitrary_types_allowed, and other options</attribute>
+        <attribute id="P9-a5e0d62e" type="FACT">Validation Modes:Use mode='json' for faster JSON parsing, mode='python' for Python object validation</attribute>
+        <attribute id="P9-b0564c53" type="FACT">Caching:Pydantic v2 includes built-in caching for validators and serializers to improve performance</attribute>
+        <attribute id="P9-6c815a54" type="FACT">Memory Usage:Use __slots__ and avoid storing large objects in model instances to reduce memory footprint</attribute>
+      </entity>
+    </entity>
+  </entity>
+</context>

@@ -1,0 +1,68 @@
+<context>
+  <entity id="P1" name="Pydantic Core Concepts">
+    <attribute id="P1-45905cbb" type="FACT">Definition:Pydantic is a data validation library for Python that uses Python type annotations to validate data and provide clear error messages</attribute>
+    <attribute id="P1-b37b1077" type="FACT">Key Features:Type validation, automatic serialization/deserialization, clear error messages, IDE support, and performance optimization</attribute>
+    <attribute id="P1-7eef011e" type="FACT">Main Use Cases:API development, data parsing, configuration management, database models, and data validation in Python applications</attribute>
+    <attribute id="P1-ab2cb9ea" type="FACT">Version:Pydantic v2 is the current major version with significant performance improvements and new features</attribute>
+    <entity id="P2" name="Pydantic Data Validation">
+      <attribute id="P2-08e8bd01" type="FACT">Core Principle:Pydantic validates data using Python type hints and provides detailed error messages when validation fails</attribute>
+      <attribute id="P2-4953b3e4" type="FACT">Validation Types:Built-in validators for str, int, float, bool, datetime, UUID, EmailStr, and custom types</attribute>
+      <attribute id="P2-9a261ee0" type="FACT">Error Handling:ValidationError provides detailed information about what went wrong and where in the data structure</attribute>
+      <attribute id="P2-455d8c2f" type="FACT">Custom Validators:Use @field_validator and @model_validator decorators to create custom validation logic</attribute>
+      <entity id="P6" name="Pydantic Advanced Features">
+        <attribute id="P6-800e3b8a" type="FACT">Field Validators:Use @field_validator decorator to create custom validation logic for individual fields</attribute>
+        <attribute id="P6-a252ac8c" type="FACT">Model Validators:Use @model_validator decorator for validation that requires access to multiple fields</attribute>
+        <attribute id="P6-38f80385" type="FACT">Generic Models:Use Generic[TypeVar] to create reusable models with type parameters</attribute>
+        <attribute id="P6-c42b58fd" type="FACT">Root Validators:Use @model_validator(mode='before') for validation before field validation occurs</attribute>
+        <entity id="P8" name="Pydantic Best Practices">
+          <attribute id="P8-b2366433" type="FACT">Model Design:Keep models focused, use composition over inheritance, and prefer explicit field definitions</attribute>
+          <attribute id="P8-18f95084" type="FACT">Validation Strategy:Use built-in validators when possible, create custom validators for complex business logic</attribute>
+          <attribute id="P8-31cb2ada" type="FACT">Error Handling:Always handle ValidationError exceptions and provide meaningful error messages to users</attribute>
+          <attribute id="P8-6c5e2c90" type="FACT">Performance:Use model_config for performance tuning, avoid unnecessary validation, and consider caching</attribute>
+          <entity id="P9" name="Pydantic Performance Optimization">
+            <attribute id="P9-67417f1d" type="FACT">Model Config:Use model_config to optimize performance with validate_assignment, arbitrary_types_allowed, and other options</attribute>
+            <attribute id="P9-a5e0d62e" type="FACT">Validation Modes:Use mode='json' for faster JSON parsing, mode='python' for Python object validation</attribute>
+            <attribute id="P9-b0564c53" type="FACT">Caching:Pydantic v2 includes built-in caching for validators and serializers to improve performance</attribute>
+            <attribute id="P9-6c815a54" type="FACT">Memory Usage:Use __slots__ and avoid storing large objects in model instances to reduce memory footprint</attribute>
+          </entity>
+        </entity>
+      </entity>
+    </entity>
+    <entity id="P3" name="Pydantic Models and Fields">
+      <attribute id="P3-78f79568" type="FACT">BaseModel:BaseModel is the main class that all Pydantic models inherit from, providing validation and serialization capabilities</attribute>
+      <attribute id="P3-649f4eb3" type="FACT">Field Types:Fields can be defined with type hints, default values, Field() function for constraints, and validation rules</attribute>
+      <attribute id="P3-339fe90c" type="FACT">Field Constraints:Use Field() with min_length, max_length, regex, gt, lt, ge, le for validation constraints</attribute>
+      <attribute id="P3-bf9662ea" type="FACT">Optional Fields:Use Optional[Type] or Type | None for optional fields, with default=None or custom defaults</attribute>
+      <entity id="P4" name="Pydantic Serialization">
+        <attribute id="P4-e8b88f47" type="FACT">JSON Serialization:Use .model_dump() to convert models to dictionaries and .model_dump_json() for JSON strings</attribute>
+        <attribute id="P4-a414bcd9" type="FACT">Model Creation:Use ModelClass(**data) or ModelClass.model_validate(data) to create instances from dictionaries</attribute>
+        <attribute id="P4-329589d9" type="FACT">Serialization Options:Use exclude, include, and by_alias parameters to control what fields are serialized</attribute>
+        <attribute id="P4-9a129703" type="FACT">Aliases:Use Field(alias='name') or model_config['alias_generator'] to customize field names in serialization</attribute>
+      </entity>
+    </entity>
+  </entity>
+  <entity id="P5" name="Pydantic Settings Management">
+    <attribute id="P5-b0246179" type="FACT">BaseSettings:BaseSettings class provides automatic loading of settings from environment variables, .env files, and other sources</attribute>
+    <attribute id="P5-bcbee2a2" type="FACT">Environment Variables:Settings are automatically loaded from environment variables with case-insensitive matching</attribute>
+    <attribute id="P5-4aac1634" type="FACT">Configuration Sources:Supports .env files, environment variables, and custom sources with priority ordering</attribute>
+    <attribute id="P5-c05a5ec4" type="FACT">Nested Settings:Use nested models for complex configuration structures with automatic validation</attribute>
+  </entity>
+  <entity id="P7" name="Pydantic Integration Patterns">
+    <attribute id="P7-a5e03476" type="FACT">FastAPI Integration:Pydantic models are the foundation of FastAPI for request/response validation and automatic API documentation</attribute>
+    <attribute id="P7-e27b0e76" type="FACT">Database Integration:Use with SQLAlchemy, Tortoise ORM, or other ORMs for type-safe database operations</attribute>
+    <attribute id="P7-9e51525b" type="FACT">API Development:Perfect for REST APIs, GraphQL, and microservices with automatic request/response validation</attribute>
+    <attribute id="P7-1c2ad8be" type="FACT">Data Processing:Use for ETL pipelines, data transformation, and ensuring data quality in Python applications</attribute>
+  </entity>
+  <entity id="P10" name="Pydantic Code Examples">
+    <attribute id="P10-01093387" type="FACT">Basic Model:from pydantic import BaseModel, Field; class User(BaseModel): name: str; email: str; age: int = Field(gt=0, le=120)</attribute>
+    <attribute id="P10-b7f5dee1" type="FACT">Validation Example:user = User(name='John', email='john@example.com', age=25); print(user.model_dump())</attribute>
+    <attribute id="P10-fbb11a5f" type="FACT">Custom Validator:@field_validator('email'); def validate_email(cls, v): return v.lower()</attribute>
+    <attribute id="P10-9b015dbd" type="FACT">Settings Example:class Settings(BaseSettings): api_key: str; debug: bool = False; class Config: env_file = '.env'</attribute>
+  </entity>
+  <entity id="P11" name="Pydantic Common Patterns">
+    <attribute id="P11-2476bbfe" type="FACT">API Request/Response:Use separate models for request and response data with different validation rules</attribute>
+    <attribute id="P11-0e7a88e0" type="FACT">Nested Models:Create complex data structures by nesting Pydantic models for hierarchical data</attribute>
+    <attribute id="P11-f64dd39a" type="FACT">Union Types:Use Union[Type1, Type2] or Type1 | Type2 for fields that can accept multiple types</attribute>
+    <attribute id="P11-b2d629ec" type="FACT">Model Inheritance:Extend base models to create specialized versions with additional fields or validation</attribute>
+  </entity>
+</context>
