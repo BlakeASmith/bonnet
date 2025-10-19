@@ -52,14 +52,6 @@ class LinkInput(BaseModel):
     content: Optional[str] = None
 
 
-class SearchRecordsInput(BaseModel):
+class SearchInput(BaseModel):
     query: str
-
-
-class FindRecordInput(BaseModel):
-    query: str
-
-
-class ResolveRecordInput(BaseModel):
-    identifier: str  # Could be ID or search query
 

@@ -267,62 +267,27 @@ def link(input: LinkInput) -> str:
 
 def search_records(query: str) -> List[Dict]:
     """
-    Search for records by content.
+    Search for records by content or ID.
     
     Args:
-        query: Search query string
+        query: Search query string or record ID
         
     Returns:
         List of matching records
     """
-    return database.search_records_by_content(query)
+    return database.search_records(query)
 
 
 def find_record(query: str) -> Optional[Dict]:
     """
-    Find a single record by content.
+    Find a single record by content or ID.
     
     Args:
-        query: Search query string
+        query: Search query string or record ID
         
     Returns:
         Single matching record or None
     """
-    return database.find_single_record(query)
-
-
-def get_record(record_id: str, record_type: str) -> Optional[Dict]:
-    """
-    Get a record by its ID and type.
-    
-    Args:
-        record_id: The record ID
-        record_type: The record type
-        
-    Returns:
-        Record data or None if not found
-    """
-    return database.get_record_by_id_and_type(record_id, record_type)
-
-
-def resolve_record_identifier(identifier: str) -> Optional[Dict]:
-    """
-    Resolve a record identifier that could be either an ID or a search query.
-    
-    Args:
-        identifier: Either a record ID or search query
-        
-    Returns:
-        Record data or None if not found
-    """
-    # First try to get by ID if it looks like an ID
-    if identifier.startswith(('T', 'A', 'F')) or '-' in identifier:
-        # Try all record types to find the ID
-        for record_type in ['entity', 'attribute', 'file']:
-            record = get_record(identifier, record_type)
-            if record:
-                return record
-    
-    # If not found by ID or doesn't look like an ID, try searching
-    return find_record(identifier)
+    results = database.search_records(query)
+    return results[0] if results else None
 

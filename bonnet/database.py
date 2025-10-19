@@ -772,15 +772,17 @@ def get_file_node_id(file_id: str) -> str:
         return row[0] if row else None
 
 
-def search_records_by_content(query: str) -> List[Dict]:
+
+
+def search_records(query: str) -> List[Dict]:
     """
-    Search for records by content across all record types.
+    Search for records by content or ID. Returns all matches.
     
     Args:
-        query: Search query string
+        query: Search query string or record ID
         
     Returns:
-        List of matching records with their IDs and display information
+        List of matching records
     """
     init_database()
     conn = sqlite3.connect(_db_path)
@@ -788,6 +790,77 @@ def search_records_by_content(query: str) -> List[Dict]:
     
     results = []
     
+    # First try to find by exact ID if it looks like an ID
+    if query.startswith(('T', 'A', 'F')) or '-' in query:
+        # Try entities
+        cursor.execute('''
+            SELECT e.id, e.name, n.searchable_content
+            FROM entities e
+            JOIN nodes n ON e.node_id = n.id
+            WHERE e.id = ?
+        ''', (query,))
+        
+        row = cursor.fetchone()
+        if row:
+            results.append({
+                'type': 'entity',
+                'id': row[0],
+                'name': row[1],
+                'display': row[1],
+                'searchable_content': row[2]
+            })
+            conn.close()
+            return results
+        
+        # Try attributes
+        cursor.execute('''
+            SELECT a.id, a.type, a.subject, a.detail, n.searchable_content
+            FROM attributes a
+            JOIN nodes n ON a.node_id = n.id
+            WHERE a.id = ?
+        ''', (query,))
+        
+        row = cursor.fetchone()
+        if row:
+            display = f"{row[1]}: {row[2]}" if row[2] else row[1]
+            if row[3]:  # detail
+                display += f" - {row[3]}"
+            
+            results.append({
+                'type': 'attribute',
+                'id': row[0],
+                'name': display,
+                'display': display,
+                'searchable_content': row[4]
+            })
+            conn.close()
+            return results
+        
+        # Try files
+        cursor.execute('''
+            SELECT f.id, f.file_path, f.description, n.searchable_content
+            FROM files f
+            JOIN nodes n ON f.node_id = n.id
+            WHERE f.id = ?
+        ''', (query,))
+        
+        row = cursor.fetchone()
+        if row:
+            display = row[1]  # file_path
+            if row[2]:  # description
+                display += f" ({row[2]})"
+            
+            results.append({
+                'type': 'file',
+                'id': row[0],
+                'name': display,
+                'display': display,
+                'searchable_content': row[3]
+            })
+            conn.close()
+            return results
+    
+    # If no exact ID match, search by content
     # Search entities
     cursor.execute('''
         SELECT e.id, e.name, n.searchable_content
@@ -854,101 +927,3 @@ def search_records_by_content(query: str) -> List[Dict]:
     
     conn.close()
     return results
-
-
-def find_single_record(query: str) -> Optional[Dict]:
-    """
-    Find a single record by content. Returns the first match or None.
-    
-    Args:
-        query: Search query string
-        
-    Returns:
-        Single matching record or None
-    """
-    results = search_records_by_content(query)
-    return results[0] if results else None
-
-
-def get_record_by_id_and_type(record_id: str, record_type: str) -> Optional[Dict]:
-    """
-    Get a record by its ID and type.
-    
-    Args:
-        record_id: The record ID
-        record_type: The record type ('entity', 'attribute', 'file')
-        
-    Returns:
-        Record data or None if not found
-    """
-    init_database()
-    conn = sqlite3.connect(_db_path)
-    cursor = conn.cursor()
-    
-    if record_type == 'entity':
-        cursor.execute('''
-            SELECT e.id, e.name, n.searchable_content
-            FROM entities e
-            JOIN nodes n ON e.node_id = n.id
-            WHERE e.id = ?
-        ''', (record_id,))
-        
-        row = cursor.fetchone()
-        if row:
-            conn.close()
-            return {
-                'type': 'entity',
-                'id': row[0],
-                'name': row[1],
-                'display': row[1],
-                'searchable_content': row[2]
-            }
-    
-    elif record_type == 'attribute':
-        cursor.execute('''
-            SELECT a.id, a.type, a.subject, a.detail, n.searchable_content
-            FROM attributes a
-            JOIN nodes n ON a.node_id = n.id
-            WHERE a.id = ?
-        ''', (record_id,))
-        
-        row = cursor.fetchone()
-        if row:
-            display = f"{row[1]}: {row[2]}" if row[2] else row[1]
-            if row[3]:  # detail
-                display += f" - {row[3]}"
-            
-            conn.close()
-            return {
-                'type': 'attribute',
-                'id': row[0],
-                'name': display,
-                'display': display,
-                'searchable_content': row[3]
-            }
-    
-    elif record_type == 'file':
-        cursor.execute('''
-            SELECT f.id, f.file_path, f.description, n.searchable_content
-            FROM files f
-            JOIN nodes n ON f.node_id = n.id
-            WHERE f.id = ?
-        ''', (record_id,))
-        
-        row = cursor.fetchone()
-        if row:
-            display = row[1]  # file_path
-            if row[2]:  # description
-                display += f" ({row[2]})"
-            
-            conn.close()
-            return {
-                'type': 'file',
-                'id': row[0],
-                'name': display,
-                'display': display,
-                'searchable_content': row[3]
-            }
-    
-    conn.close()
-    return None

@@ -11,7 +11,7 @@ from ._input_models import (
     LinkInput,
 )
 from . import domain
-from ._utils._cli_utils import handle_errors, find_record_with_feedback, search_and_display_records, resolve_record_identifier
+from ._utils._cli_utils import handle_errors, find_record_with_feedback, search_and_display_records, find_record
 
 
 assembler = xml_assembler()
@@ -76,8 +76,8 @@ def link(from_identifier, to_identifier, edge_type, content):
         link T1 T2                           # Link entity T1 to entity T2
         link "bike" "red color"              # Link bike to red color attribute
     """
-    # Resolve source record
-    from_record = resolve_record_identifier(from_identifier)
+    # Find source record
+    from_record = find_record(from_identifier)
     if not from_record:
         # Try searching for similar records
         search_results = domain.search_records(from_identifier)
@@ -90,8 +90,8 @@ def link(from_identifier, to_identifier, edge_type, content):
             click.echo(f"No records found matching '{from_identifier}'", err=True)
         return
     
-    # Resolve target record
-    to_record = resolve_record_identifier(to_identifier)
+    # Find target record
+    to_record = find_record(to_identifier)
     if not to_record:
         # Try searching for similar records
         search_results = domain.search_records(to_identifier)
