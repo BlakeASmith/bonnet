@@ -20,9 +20,19 @@ def xml_assembler() -> Assembler:
             return f"<attribute id=\"{attribute.id}\" type=\"{attribute.type}\">{attribute.subject}:{attribute.detail}</attribute>"
         
         def assemble_file(file: File, indent: str) -> str:
-            if file.description:
+            if file.include_content and file.content:
+                # File with content - include both description and content
+                lines = [f"<file id=\"{file.id}\" path=\"{file.file_path}\">"]
+                if file.description:
+                    lines.append(f"{indent}  <description>{file.description}</description>")
+                lines.append(f"{indent}  <content>{file.content}</content>")
+                lines.append(f"{indent}</file>")
+                return "\n".join(lines)
+            elif file.description:
+                # File with description only
                 return f"<file id=\"{file.id}\" path=\"{file.file_path}\">\n{indent}  <description>{file.description}</description>\n{indent}</file>"
             else:
+                # File with no description or content
                 return f"<file id=\"{file.id}\" path=\"{file.file_path}\"></file>"
         
         lines = ["<context>"]

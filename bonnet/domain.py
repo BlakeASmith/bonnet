@@ -204,7 +204,7 @@ def store_file(input: StoreFileInput) -> bool:
     Store a file record.
     
     Args:
-        input: StoreFileInput containing file_id, file_path, and description
+        input: StoreFileInput containing file_id, file_path, description, content, and include_content
         
     Returns:
         True if successful
@@ -212,7 +212,9 @@ def store_file(input: StoreFileInput) -> bool:
     return database.store_file(
         input.file_id,
         input.file_path,
-        input.description
+        input.description,
+        input.content,
+        input.include_content
     )
 
 

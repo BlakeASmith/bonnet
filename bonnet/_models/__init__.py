@@ -20,6 +20,8 @@ class File(BaseModel):
     id: str
     file_path: str
     description: Optional[str] = None
+    content: Optional[str] = None
+    include_content: bool = False
 
 
 class Node(BaseModel):
@@ -98,7 +100,9 @@ def build_file_model(record_data: Dict[str, Any]) -> File:
     return File(
         id=record_data['id'],
         file_path=record_data['file_path'],
-        description=record_data['description']
+        description=record_data.get('description'),
+        content=record_data.get('content'),
+        include_content=record_data.get('include_content', False)
     )
 
 
