@@ -11,7 +11,7 @@ from ._input_models import (
     LinkInput,
 )
 from . import domain
-from ._utils._cli_utils import handle_errors, find_record_with_feedback, search_and_display_records, find_record
+from ._utils._cli_utils import handle_errors, find_record_with_feedback, search_and_display_records
 
 
 assembler = xml_assembler()
@@ -77,32 +77,34 @@ def link(from_identifier, to_identifier, edge_type, content):
         link "bike" "red color"              # Link bike to red color attribute
     """
     # Find source record
-    from_record = find_record(from_identifier)
-    if not from_record:
-        # Try searching for similar records
-        search_results = domain.search_records(from_identifier)
-        if search_results:
-            click.echo(f"No exact match found for '{from_identifier}'. Did you mean one of these?", err=True)
-            for i, result in enumerate(search_results[:5], 1):  # Show top 5 results
-                click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
-            click.echo("Please be more specific or use the exact ID.", err=True)
-        else:
-            click.echo(f"No records found matching '{from_identifier}'", err=True)
+    from_results = domain.search_records(from_identifier)
+    if not from_results:
+        click.echo(f"No records found matching '{from_identifier}'", err=True)
         return
     
-    # Find target record
-    to_record = find_record(to_identifier)
-    if not to_record:
-        # Try searching for similar records
-        search_results = domain.search_records(to_identifier)
-        if search_results:
-            click.echo(f"No exact match found for '{to_identifier}'. Did you mean one of these?", err=True)
-            for i, result in enumerate(search_results[:5], 1):  # Show top 5 results
-                click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
-            click.echo("Please be more specific or use the exact ID.", err=True)
-        else:
-            click.echo(f"No records found matching '{to_identifier}'", err=True)
+    if len(from_results) > 1:
+        click.echo(f"Multiple records found for '{from_identifier}'. Did you mean one of these?", err=True)
+        for i, result in enumerate(from_results[:5], 1):
+            click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
+        click.echo("Please be more specific or use the exact ID.", err=True)
         return
+    
+    from_record = from_results[0]
+    
+    # Find target record
+    to_results = domain.search_records(to_identifier)
+    if not to_results:
+        click.echo(f"No records found matching '{to_identifier}'", err=True)
+        return
+    
+    if len(to_results) > 1:
+        click.echo(f"Multiple records found for '{to_identifier}'. Did you mean one of these?", err=True)
+        for i, result in enumerate(to_results[:5], 1):
+            click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
+        click.echo("Please be more specific or use the exact ID.", err=True)
+        return
+    
+    to_record = to_results[0]
     
     input_model = LinkInput(
         from_type=from_record['type'],

@@ -19,19 +19,6 @@ def handle_errors(func):
     return wrapper
 
 
-def find_record(identifier: str) -> Optional[Dict]:
-    """
-    Find a record by identifier (ID or search query).
-    
-    Args:
-        identifier: Either a record ID or search query
-        
-    Returns:
-        Record data or None if not found
-    """
-    return domain.find_record(identifier)
-
-
 def find_record_with_feedback(identifier: str) -> Optional[str]:
     """
     Find a record and return its ID, with user feedback for ambiguous results.
@@ -42,21 +29,21 @@ def find_record_with_feedback(identifier: str) -> Optional[str]:
     Returns:
         Record ID if found, None otherwise
     """
-    record = find_record(identifier)
+    results = domain.search_records(identifier)
     
-    if not record:
-        # Try searching for similar records
-        search_results = domain.search_records(identifier)
-        if search_results:
-            click.echo(f"No exact match found for '{identifier}'. Did you mean one of these?", err=True)
-            for i, result in enumerate(search_results[:5], 1):  # Show top 5 results
-                click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
-            click.echo("Please be more specific or use the exact ID.", err=True)
-        else:
-            click.echo(f"No records found matching '{identifier}'", err=True)
+    if not results:
+        click.echo(f"No records found matching '{identifier}'", err=True)
         return None
     
-    return record['id']
+    if len(results) == 1:
+        return results[0]['id']
+    
+    # Multiple results - show them and ask for clarification
+    click.echo(f"Multiple records found for '{identifier}'. Did you mean one of these?", err=True)
+    for i, result in enumerate(results[:5], 1):  # Show top 5 results
+        click.echo(f"  {i}. {result['display']} ({result['type']}:{result['id']})", err=True)
+    click.echo("Please be more specific or use the exact ID.", err=True)
+    return None
 
 
 def search_and_display_records(query: str, limit: int = 10):

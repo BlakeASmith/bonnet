@@ -277,17 +277,3 @@ def search_records(query: str) -> List[Dict]:
     """
     return database.search_records(query)
 
-
-def find_record(query: str) -> Optional[Dict]:
-    """
-    Find a single record by content or ID.
-    
-    Args:
-        query: Search query string or record ID
-        
-    Returns:
-        Single matching record or None
-    """
-    results = database.search_records(query)
-    return results[0] if results else None
-
