@@ -23,6 +23,7 @@ class File(BaseModel):
     description: Optional[str] = None
     content: Optional[str] = None
     include_content: bool = False
+    index_content: bool = True
 
 
 class Snippet(BaseModel):
@@ -30,6 +31,7 @@ class Snippet(BaseModel):
     file_path: str
     content: str
     metadata: Optional[Dict[str, Any]] = None
+    index_content: bool = True
 
 
 class Node(BaseModel):
@@ -110,7 +112,8 @@ def build_file_model(record_data: Dict[str, Any]) -> File:
         file_path=record_data['file_path'],
         description=record_data.get('description'),
         content=record_data.get('content'),
-        include_content=record_data.get('include_content', False)
+        include_content=record_data.get('include_content', False),
+        index_content=record_data.get('index_content', True)
     )
 
 
@@ -130,7 +133,8 @@ def build_snippet_model(record_data: Dict[str, Any]) -> Snippet:
         id=record_data['id'],
         file_path=record_data['file_path'],
         content=record_data['content'],
-        metadata=metadata
+        metadata=metadata,
+        index_content=record_data.get('index_content', True)
     )
 
 

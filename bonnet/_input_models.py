@@ -44,11 +44,13 @@ class StoreFileInput(BaseModel):
     description: Optional[str] = None
     content: Optional[str] = None
     include_content: bool = False
+    index_content: bool = True
 
 
 class StoreSnippetInput(BaseModel):
     snippet_id: Optional[str] = None
     file_path: str
+    index_content: bool = True
 
 
 class LinkInput(BaseModel):

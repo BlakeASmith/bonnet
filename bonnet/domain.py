@@ -229,7 +229,7 @@ def store_file(input: StoreFileInput) -> str:
     Store a file record.
     
     Args:
-        input: StoreFileInput containing file_id (optional), file_path, description, content, and include_content
+        input: StoreFileInput containing file_id (optional), file_path, description, content, include_content, and index_content
         
     Returns:
         The file ID used (either provided or generated)
@@ -242,7 +242,8 @@ def store_file(input: StoreFileInput) -> str:
         input.file_path,
         input.description,
         input.content,
-        input.include_content
+        input.include_content,
+        input.index_content
     )
     return file_id
 
@@ -267,7 +268,7 @@ def store_snippet(input: StoreSnippetInput) -> str:
     Store a snippet record from a file.
     
     Args:
-        input: StoreSnippetInput containing snippet_id (optional) and file_path
+        input: StoreSnippetInput containing snippet_id (optional), file_path, and index_content
         
     Returns:
         The snippet ID used (either provided or generated)
@@ -282,7 +283,7 @@ def store_snippet(input: StoreSnippetInput) -> str:
     import json
     metadata_str = json.dumps(metadata) if metadata else None
     
-    database.store_snippet(snippet_id, input.file_path, content, metadata_str)
+    database.store_snippet(snippet_id, input.file_path, content, metadata_str, input.index_content)
     return snippet_id
 
 
