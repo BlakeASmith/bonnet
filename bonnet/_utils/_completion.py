@@ -21,6 +21,11 @@ def complete_record_ids(ctx: click.Context, param: click.Parameter, incomplete: 
             # Use the ID as the completion value
             completions.append(result['id'])
         
+        # If no results found, try to get recent records
+        if not completions and not incomplete:
+            recent_results = domain.database.get_recent_records(5)
+            completions = [result['id'] for result in recent_results[:5]]
+        
         return completions
     except Exception:
         # If there's any error, return empty list
@@ -33,17 +38,20 @@ def complete_entity_ids(ctx: click.Context, param: click.Parameter, incomplete: 
     """
     try:
         # Search for entities that match the incomplete string
-        input_model = domain.SearchEntitiesInput(query=incomplete)
-        context_tree = domain.search_entities(input_model)
+        results = domain.database.search_records_by_type('entity', incomplete, 10)
         
-        # Extract entity IDs from the context tree
+        # Extract entity IDs from the results
         completions = []
-        if context_tree.children:
-            for child in context_tree.children:
-                if hasattr(child, 'id') and child.id:
-                    completions.append(child.id)
+        for result in results:
+            if result.get('id'):
+                completions.append(result['id'])
         
-        return completions[:10]  # Limit to 10 results
+        # If no results found, try to get recent entities
+        if not completions and not incomplete:
+            recent_results = domain.database.search_records_by_type('entity', '', 5)
+            completions = [result['id'] for result in recent_results if result.get('id')]
+        
+        return completions
     except Exception:
         return []
 
@@ -52,64 +60,44 @@ def complete_attribute_types(ctx: click.Context, param: click.Parameter, incompl
     """
     Complete attribute types for the --type parameter.
     """
-    # Common attribute types used in the system
-    attribute_types = [
-        'FACT',
-        'REF',
-        'DESCRIPTION',
-        'NOTE',
-        'TAG',
-        'CATEGORY',
-        'STATUS',
-        'PRIORITY',
-        'SOURCE',
-        'DATE',
-        'VERSION',
-        'AUTHOR',
-        'LOCATION',
-        'URL',
-        'EMAIL',
-        'PHONE',
-        'ADDRESS',
-        'COORDINATES',
-        'RATING',
-        'SCORE'
-    ]
-    
-    # Filter based on incomplete string
-    return [attr_type for attr_type in attribute_types if attr_type.lower().startswith(incomplete.lower())]
+    try:
+        # Get distinct attribute types from the database
+        attribute_types = domain.database.get_distinct_attribute_types()
+        
+        # Filter to only include valid types from the input model
+        valid_types = {'FACT', 'REF', 'TASK', 'RULE'}
+        valid_attribute_types = [attr_type for attr_type in attribute_types if attr_type in valid_types]
+        
+        # If no valid types in database, use the default valid types
+        if not valid_attribute_types:
+            valid_attribute_types = ['FACT', 'REF', 'TASK', 'RULE']
+        
+        # Filter based on incomplete string
+        return [attr_type for attr_type in valid_attribute_types if attr_type.lower().startswith(incomplete.lower())]
+    except Exception:
+        # Fallback to valid types if database query fails
+        fallback_types = ['FACT', 'REF', 'TASK', 'RULE']
+        return [attr_type for attr_type in fallback_types if attr_type.lower().startswith(incomplete.lower())]
 
 
 def complete_edge_types(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
     """
     Complete edge types for the --type parameter in link command.
     """
-    # Common edge types
-    edge_types = [
-        'references',
-        'relates_to',
-        'depends_on',
-        'contains',
-        'part_of',
-        'similar_to',
-        'opposite_of',
-        'causes',
-        'prevents',
-        'follows',
-        'precedes',
-        'influences',
-        'affects',
-        'belongs_to',
-        'associated_with',
-        'derived_from',
-        'based_on',
-        'implements',
-        'extends',
-        'overrides'
-    ]
-    
-    # Filter based on incomplete string
-    return [edge_type for edge_type in edge_types if edge_type.lower().startswith(incomplete.lower())]
+    try:
+        # Get distinct edge types from the database
+        edge_types = domain.database.get_distinct_edge_types()
+        
+        # If no types in database, provide some common defaults
+        if not edge_types:
+            edge_types = ['references', 'relates_to', 'depends_on', 'contains', 'part_of']
+        
+        # Filter based on incomplete string
+        return [edge_type for edge_type in edge_types if edge_type.lower().startswith(incomplete.lower())]
+    except Exception:
+        # Fallback to common types if database query fails
+        fallback_types = ['references', 'relates_to', 'depends_on', 'contains', 'part_of']
+        return [edge_type for edge_type in fallback_types if edge_type.lower().startswith(incomplete.lower())]
 
 
 def complete_file_paths(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
@@ -171,6 +159,17 @@ def complete_search_queries(ctx: click.Context, param: click.Parameter, incomple
                 if snippet and snippet not in seen:
                     seen.add(snippet)
                     completions.append(snippet)
+        
+        # If no results found, try to get recent records for suggestions
+        if not completions and not incomplete:
+            recent_results = domain.database.get_recent_records(5)
+            for result in recent_results:
+                if result.get('searchable_content'):
+                    content = result['searchable_content']
+                    snippet = content[:50].strip()
+                    if snippet and snippet not in seen:
+                        seen.add(snippet)
+                        completions.append(snippet)
         
         return completions
     except Exception:
