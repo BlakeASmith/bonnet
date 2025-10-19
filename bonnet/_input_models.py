@@ -39,9 +39,11 @@ class SearchEntitiesInput(BaseModel):
 
 
 class StoreFileInput(BaseModel):
-    file_id: str
+    file_id: Optional[str] = None
     file_path: str
     description: Optional[str] = None
+    content: Optional[str] = None
+    include_content: bool = False
 
 
 class LinkInput(BaseModel):

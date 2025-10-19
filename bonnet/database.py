@@ -76,6 +76,8 @@ def init_database():
                     id TEXT PRIMARY KEY,
                     file_path TEXT NOT NULL,
                     description TEXT,
+                    content TEXT,
+                    include_content BOOLEAN DEFAULT 0,
                     node_id TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (node_id) REFERENCES nodes(id)
@@ -504,7 +506,7 @@ def get_record_by_node(node_id: str) -> Dict:
     
     elif table_name == 'files':
         cursor.execute('''
-            SELECT id, file_path, description, node_id
+            SELECT id, file_path, description, content, include_content, node_id
             FROM files WHERE id = ?
         ''', (record_id,))
         
@@ -515,7 +517,9 @@ def get_record_by_node(node_id: str) -> Dict:
                 'id': row[0],
                 'file_path': row[1],
                 'description': row[2],
-                'node_id': row[3]
+                'content': row[3],
+                'include_content': row[4],
+                'node_id': row[5]
             }
     
     conn.close()
@@ -728,14 +732,16 @@ def get_entity_node_id(entity_id: str) -> str:
         row = cursor.fetchone()
         return row[0] if row else None
 
-def store_file(file_id: str, file_path: str, description: str = None) -> bool:
+def store_file(file_id: str, file_path: str, description: str = None, content: str = None, include_content: bool = False) -> bool:
     """Store a file record."""
     init_database()
     
     # First create the node
     file_data = {
         'file_path': file_path,
-        'description': description or ''
+        'description': description or '',
+        'content': content or '',
+        'include_content': include_content
     }
     node_id = create_node('files', file_id, file_data)
     
@@ -747,9 +753,9 @@ def store_file(file_id: str, file_path: str, description: str = None) -> bool:
         
         # Insert file record with node_id
         cursor.execute('''
-            INSERT INTO files (id, file_path, description, node_id)
-            VALUES (?, ?, ?, ?)
-        ''', (file_id, file_path, description, node_id))
+            INSERT INTO files (id, file_path, description, content, include_content, node_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (file_id, file_path, description, content, include_content, node_id))
     
     return True
 
@@ -1071,7 +1077,7 @@ def _get_record_data(cursor, table_name: str, record_id: str, searchable_content
     
     elif table_name == 'files':
         cursor.execute('''
-            SELECT id, file_path, description FROM files WHERE id = ?
+            SELECT id, file_path, description, content, include_content FROM files WHERE id = ?
         ''', (record_id,))
         record_row = cursor.fetchone()
         if record_row:
