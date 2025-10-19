@@ -791,7 +791,9 @@ def search_records(query: str) -> List[Dict]:
     results = []
     
     # First try to find by exact ID if it looks like an ID
-    if query.startswith(('T', 'A', 'F')) or '-' in query:
+    # Check if query looks like an ID (alphanumeric with optional numbers)
+    import re
+    if re.match(r'^[A-Za-z]+\d*$', query) or '-' in query:
         # Try entities
         cursor.execute('''
             SELECT e.id, e.name, n.searchable_content
