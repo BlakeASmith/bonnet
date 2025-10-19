@@ -790,77 +790,74 @@ def search_records(query: str) -> List[Dict]:
     
     results = []
     
-    # First try to find by exact ID if it looks like an ID
-    # Check if query looks like an ID (alphanumeric with optional numbers)
-    import re
-    if re.match(r'^[A-Za-z]+\d*$', query) or '-' in query:
-        # Try entities
-        cursor.execute('''
-            SELECT e.id, e.name, n.searchable_content
-            FROM entities e
-            JOIN nodes n ON e.node_id = n.id
-            WHERE e.id = ?
-        ''', (query,))
+    # First try to find by exact ID for any query
+    # Try entities
+    cursor.execute('''
+        SELECT e.id, e.name, n.searchable_content
+        FROM entities e
+        JOIN nodes n ON e.node_id = n.id
+        WHERE e.id = ?
+    ''', (query,))
+    
+    row = cursor.fetchone()
+    if row:
+        results.append({
+            'type': 'entity',
+            'id': row[0],
+            'name': row[1],
+            'display': row[1],
+            'searchable_content': row[2]
+        })
+        conn.close()
+        return results
+    
+    # Try attributes
+    cursor.execute('''
+        SELECT a.id, a.type, a.subject, a.detail, n.searchable_content
+        FROM attributes a
+        JOIN nodes n ON a.node_id = n.id
+        WHERE a.id = ?
+    ''', (query,))
+    
+    row = cursor.fetchone()
+    if row:
+        display = f"{row[1]}: {row[2]}" if row[2] else row[1]
+        if row[3]:  # detail
+            display += f" - {row[3]}"
         
-        row = cursor.fetchone()
-        if row:
-            results.append({
-                'type': 'entity',
-                'id': row[0],
-                'name': row[1],
-                'display': row[1],
-                'searchable_content': row[2]
-            })
-            conn.close()
-            return results
+        results.append({
+            'type': 'attribute',
+            'id': row[0],
+            'name': display,
+            'display': display,
+            'searchable_content': row[4]
+        })
+        conn.close()
+        return results
+    
+    # Try files
+    cursor.execute('''
+        SELECT f.id, f.file_path, f.description, n.searchable_content
+        FROM files f
+        JOIN nodes n ON f.node_id = n.id
+        WHERE f.id = ?
+    ''', (query,))
+    
+    row = cursor.fetchone()
+    if row:
+        display = row[1]  # file_path
+        if row[2]:  # description
+            display += f" ({row[2]})"
         
-        # Try attributes
-        cursor.execute('''
-            SELECT a.id, a.type, a.subject, a.detail, n.searchable_content
-            FROM attributes a
-            JOIN nodes n ON a.node_id = n.id
-            WHERE a.id = ?
-        ''', (query,))
-        
-        row = cursor.fetchone()
-        if row:
-            display = f"{row[1]}: {row[2]}" if row[2] else row[1]
-            if row[3]:  # detail
-                display += f" - {row[3]}"
-            
-            results.append({
-                'type': 'attribute',
-                'id': row[0],
-                'name': display,
-                'display': display,
-                'searchable_content': row[4]
-            })
-            conn.close()
-            return results
-        
-        # Try files
-        cursor.execute('''
-            SELECT f.id, f.file_path, f.description, n.searchable_content
-            FROM files f
-            JOIN nodes n ON f.node_id = n.id
-            WHERE f.id = ?
-        ''', (query,))
-        
-        row = cursor.fetchone()
-        if row:
-            display = row[1]  # file_path
-            if row[2]:  # description
-                display += f" ({row[2]})"
-            
-            results.append({
-                'type': 'file',
-                'id': row[0],
-                'name': display,
-                'display': display,
-                'searchable_content': row[3]
-            })
-            conn.close()
-            return results
+        results.append({
+            'type': 'file',
+            'id': row[0],
+            'name': display,
+            'display': display,
+            'searchable_content': row[3]
+        })
+        conn.close()
+        return results
     
     # If no exact ID match, search by content
     # Search entities
