@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from bonnet.database import get_all_short_names
 from .. import domain
+from .._record_types import get_valid_attribute_types
 
 
 def complete_record_ids(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
@@ -67,18 +68,18 @@ def complete_attribute_types(ctx: click.Context, param: click.Parameter, incompl
         attribute_types = domain.database.get_distinct_attribute_types()
         
         # Filter to only include valid types from the input model
-        valid_types = {'FACT', 'REF', 'TASK', 'RULE'}
+        valid_types = set(get_valid_attribute_types())
         valid_attribute_types = [attr_type for attr_type in attribute_types if attr_type in valid_types]
         
         # If no valid types in database, use the default valid types
         if not valid_attribute_types:
-            valid_attribute_types = ['FACT', 'REF', 'TASK', 'RULE']
+            valid_attribute_types = get_valid_attribute_types()
         
         # Filter based on incomplete string
         return [attr_type for attr_type in valid_attribute_types if attr_type.lower().startswith(incomplete.lower())]
     except Exception:
         # Fallback to valid types if database query fails
-        fallback_types = ['FACT', 'REF', 'TASK', 'RULE']
+        fallback_types = get_valid_attribute_types()
         return [attr_type for attr_type in fallback_types if attr_type.lower().startswith(incomplete.lower())]
 
 
