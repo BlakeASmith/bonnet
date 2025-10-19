@@ -1,7 +1,7 @@
 """Input Pydantic models for domain functions."""
 
-from typing import Optional
-from pydantic import BaseModel
+from typing import Optional, Literal
+from pydantic import BaseModel, Field, field_validator
 
 
 class GetEntityContextInput(BaseModel):
@@ -21,7 +21,7 @@ class StoreEntityInput(BaseModel):
 
 class StoreAttributeInput(BaseModel):
     attr_id: str
-    attr_type: str
+    attr_type: Literal["FACT", "REF", "TASK", "RULE"] = Field(..., description="Attribute type must be one of: FACT, REF, TASK, RULE")
     subject: str
     detail: str
 
