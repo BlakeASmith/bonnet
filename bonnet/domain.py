@@ -1,6 +1,6 @@
 """Domain layer that returns Pydantic models after database fetches."""
 
-from ._models import ContextTree, Node, Edge, build_model_from_record
+from ._models import ContextTree, Node, Edge, build_model_from_record, parse_snippet_file
 from typing import Dict, List 
 from ._input_models import (
     SearchInput,
@@ -9,6 +9,7 @@ from ._input_models import (
     StoreAttributeInput,
     CreateEdgeInput,
     StoreFileInput,
+    StoreSnippetInput,
     LinkInput,
 )
 from . import database
@@ -36,6 +37,18 @@ def generate_file_id() -> str:
     # Get next available number for file prefix
     next_number = database.get_next_id_number("F")
     return f"F{next_number}"
+
+
+def generate_snippet_id() -> str:
+    """
+    Generate a simple snippet ID with prefix and number.
+    
+    Returns:
+        A simple ID like "S1", "S2", "S3", etc.
+    """
+    # Get next available number for snippet prefix
+    next_number = database.get_next_id_number("S")
+    return f"S{next_number}"
 
 
 def search(input: SearchInput) -> ContextTree:
@@ -69,7 +82,7 @@ def search(input: SearchInput) -> ContextTree:
         data = None
         node_type = 'root'
         
-        if node_data['record']['type'] in ['entity', 'attribute', 'file']:
+        if node_data['record']['type'] in ['entity', 'attribute', 'file', 'snippet']:
             data = build_model_from_record(node_data['record'])
             node_type = node_data['record']['type']
         
@@ -249,6 +262,43 @@ def get_file_node_id(file_id: str) -> str:
     return database.get_file_node_id(file_id)
 
 
+def store_snippet(input: StoreSnippetInput) -> str:
+    """
+    Store a snippet record from a file.
+    
+    Args:
+        input: StoreSnippetInput containing snippet_id (optional) and file_path
+        
+    Returns:
+        The snippet ID used (either provided or generated)
+    """
+    # Generate snippet ID if not provided
+    snippet_id = input.snippet_id if input.snippet_id is not None else generate_snippet_id()
+    
+    # Parse the snippet file to extract content and metadata
+    content, metadata = parse_snippet_file(input.file_path)
+    
+    # Convert metadata to JSON string for storage
+    import json
+    metadata_str = json.dumps(metadata) if metadata else None
+    
+    database.store_snippet(snippet_id, input.file_path, content, metadata_str)
+    return snippet_id
+
+
+def get_snippet_node_id(snippet_id: str) -> str:
+    """
+    Get the node ID for a snippet.
+    
+    Args:
+        snippet_id: The snippet ID
+        
+    Returns:
+        The node ID if found, None otherwise
+    """
+    return database.get_snippet_node_id(snippet_id)
+
+
 def link(input: LinkInput) -> str:
     """
     Link any record type to any other record type.
@@ -263,7 +313,8 @@ def link(input: LinkInput) -> str:
     type_to_table = {
         'entity': 'entities',
         'file': 'files',
-        'attribute': 'attributes'
+        'attribute': 'attributes',
+        'snippet': 'snippets'
     }
     
     from_table = type_to_table.get(input.from_type)

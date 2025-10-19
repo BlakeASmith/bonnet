@@ -1,4 +1,5 @@
 from typing import List, Union, Optional, Dict, Any, Callable
+import yaml
 
 from pydantic import BaseModel, Field
 
@@ -22,6 +23,13 @@ class File(BaseModel):
     description: Optional[str] = None
     content: Optional[str] = None
     include_content: bool = False
+
+
+class Snippet(BaseModel):
+    id: str
+    file_path: str
+    content: str
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class Node(BaseModel):
@@ -54,8 +62,8 @@ class SearchResult(BaseModel):
 
 class ContextTree(BaseModel):
     """Represents a node in the knowledge graph with its data and relationships."""
-    type: str  # 'entity', 'attribute', 'file', or 'root'
-    data: Union[Entity, Attribute, File, None]  # None for root nodes
+    type: str  # 'entity', 'attribute', 'file', 'snippet', or 'root'
+    data: Union[Entity, Attribute, File, Snippet, None]  # None for root nodes
     node: Node
     children: List["ContextTree"] = Field(default_factory=list)
     edges: List[Edge] = Field(default_factory=list)
@@ -106,11 +114,70 @@ def build_file_model(record_data: Dict[str, Any]) -> File:
     )
 
 
-def build_model_from_record(record_data: Dict[str, Any]) -> Union[Entity, Attribute, File]:
+@model_builder('snippet')
+def build_snippet_model(record_data: Dict[str, Any]) -> Snippet:
+    """Build a Snippet model from database record data."""
+    # Parse metadata if it's a JSON string
+    metadata = record_data.get('metadata')
+    if metadata and isinstance(metadata, str):
+        try:
+            import json
+            metadata = json.loads(metadata)
+        except (json.JSONDecodeError, TypeError):
+            metadata = None
+    
+    return Snippet(
+        id=record_data['id'],
+        file_path=record_data['file_path'],
+        content=record_data['content'],
+        metadata=metadata
+    )
+
+
+def build_model_from_record(record_data: Dict[str, Any]) -> Union[Entity, Attribute, File, Snippet]:
     """Build the appropriate Pydantic model from a database record using the registry."""
     record_type = record_data.get('type')
     if record_type not in MODEL_BUILDERS:
         raise ValueError(f"Unknown record type: {record_type}")
     
     return MODEL_BUILDERS[record_type](record_data)
+
+
+def parse_snippet_file(file_path: str) -> tuple[str, Optional[Dict[str, Any]]]:
+    """
+    Parse a snippet file that may have an optional YAML header.
+    
+    Args:
+        file_path: Path to the snippet file
+        
+    Returns:
+        Tuple of (content, metadata_dict)
+    """
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Check if file starts with YAML front matter
+        if content.startswith('---\n'):
+            # Find the end of YAML front matter
+            end_marker = content.find('\n---\n', 4)
+            if end_marker != -1:
+                yaml_content = content[4:end_marker]
+                snippet_content = content[end_marker + 5:].lstrip('\n')
+                
+                try:
+                    metadata = yaml.safe_load(yaml_content) or {}
+                    return snippet_content, metadata
+                except yaml.YAMLError:
+                    # If YAML parsing fails, treat entire content as snippet
+                    return content, None
+            else:
+                # No end marker found, treat entire content as snippet
+                return content, None
+        else:
+            # No YAML front matter, return content as-is
+            return content, None
+            
+    except (IOError, OSError) as e:
+        raise ValueError(f"Could not read snippet file {file_path}: {e}")
 

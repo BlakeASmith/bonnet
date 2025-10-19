@@ -84,6 +84,19 @@ def init_database():
                 )
             ''')
             
+            # Create snippets table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS snippets (
+                    id TEXT PRIMARY KEY,
+                    file_path TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    metadata TEXT,
+                    node_id TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (node_id) REFERENCES nodes(id)
+                )
+            ''')
+            
             # Create nodes table for knowledge graph
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS nodes (
@@ -124,6 +137,8 @@ def init_database():
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_attributes_node_id ON attributes(node_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_files_path ON files(file_path)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_files_node_id ON files(node_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_snippets_path ON snippets(file_path)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_snippets_node_id ON snippets(node_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_nodes_table_record ON nodes(table_name, record_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_from_node ON edges(from_node_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_edges_to_node ON edges(to_node_id)')
@@ -216,6 +231,14 @@ def build_file_searchable_content(record_data: dict) -> str:
     content_parts = [record_data.get('file_path', '')]
     if record_data.get('description'):
         content_parts.append(record_data['description'])
+    return ' '.join(content_parts)
+
+@searchable_builder('snippets')
+def build_snippet_searchable_content(record_data: dict) -> str:
+    """Build searchable content for a snippet node."""
+    content_parts = [record_data.get('file_path', '')]
+    if record_data.get('content'):
+        content_parts.append(record_data['content'])
     return ' '.join(content_parts)
 
 def create_node(table_name: str, record_id: str, record_data: dict) -> str:
@@ -522,6 +545,23 @@ def get_record_by_node(node_id: str) -> Dict:
                 'node_id': row[5]
             }
     
+    elif table_name == 'snippets':
+        cursor.execute('''
+            SELECT id, file_path, content, metadata, node_id
+            FROM snippets WHERE id = ?
+        ''', (record_id,))
+        
+        row = cursor.fetchone()
+        if row:
+            return {
+                'type': 'snippet',
+                'id': row[0],
+                'file_path': row[1],
+                'content': row[2],
+                'metadata': row[3],
+                'node_id': row[4]
+            }
+    
     conn.close()
     return None
 
@@ -800,6 +840,42 @@ def get_file_node_id(file_id: str) -> str:
         return row[0] if row else None
 
 
+def store_snippet(snippet_id: str, file_path: str, content: str, metadata: str = None) -> bool:
+    """Store a snippet record."""
+    init_database()
+    
+    # First create the node
+    snippet_data = {
+        'file_path': file_path,
+        'content': content,
+        'metadata': metadata or ''
+    }
+    node_id = create_node('snippets', snippet_id, snippet_data)
+    
+    with transaction() as cursor:
+        # Check if snippet already exists
+        cursor.execute("SELECT id FROM snippets WHERE id = ?", (snippet_id,))
+        if cursor.fetchone():
+            raise ValueError(f"Snippet ID {snippet_id} already exists")
+        
+        # Insert snippet record with node_id
+        cursor.execute('''
+            INSERT INTO snippets (id, file_path, content, metadata, node_id)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (snippet_id, file_path, content, metadata, node_id))
+    
+    return True
+
+
+def get_snippet_node_id(snippet_id: str) -> str:
+    """Get the node ID for a snippet."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT node_id FROM snippets WHERE id = ?", (snippet_id,))
+        row = cursor.fetchone()
+        return row[0] if row else None
+
+
 def get_file_by_id(file_id: str) -> Optional[Dict]:
     """
     Get a file record by its ID.
@@ -1001,7 +1077,8 @@ def search_records_by_type(record_type: str, query: str = "", limit: int = 10) -
     table_name = {
         'entity': 'entities',
         'attribute': 'attributes', 
-        'file': 'files'
+        'file': 'files',
+        'snippet': 'snippets'
     }.get(record_type)
     
     if not table_name:
@@ -1087,6 +1164,22 @@ def _get_record_data(cursor, table_name: str, record_id: str, searchable_content
             
             results.append({
                 'type': 'file',
+                'id': record_row[0],
+                'name': display,
+                'display': display,
+                'searchable_content': searchable_content
+            })
+    
+    elif table_name == 'snippets':
+        cursor.execute('''
+            SELECT id, file_path, content, metadata FROM snippets WHERE id = ?
+        ''', (record_id,))
+        record_row = cursor.fetchone()
+        if record_row:
+            display = record_row[1]  # file_path
+            
+            results.append({
+                'type': 'snippet',
                 'id': record_row[0],
                 'name': display,
                 'display': display,

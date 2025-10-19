@@ -1,6 +1,6 @@
 from typing import Protocol, Union
 
-from .._models import Entity, ContextTree, SearchResult, Attribute, File
+from .._models import Entity, ContextTree, SearchResult, Attribute, File, Snippet
 from typing import List
 
 
@@ -35,6 +35,27 @@ def xml_assembler() -> Assembler:
                 # File with no description or content
                 return f"<file id=\"{file.id}\" path=\"{file.file_path}\"></file>"
         
+        def assemble_snippet(snippet: Snippet, indent: str) -> str:
+            # Build XML attributes from metadata
+            attrs = [f'id="{snippet.id}"', f'path="{snippet.file_path}"']
+            
+            if snippet.metadata:
+                for key, value in snippet.metadata.items():
+                    # Convert value to string and escape quotes
+                    value_str = str(value).replace('"', '&quot;')
+                    attrs.append(f'{key}="{value_str}"')
+            
+            # Create the snippet element with attributes
+            snippet_tag = f"<snippet {' '.join(attrs)}>"
+            
+            # Add content
+            lines = [snippet_tag]
+            if snippet.content:
+                lines.append(f"{indent}  {snippet.content}")
+            lines.append(f"{indent}</snippet>")
+            
+            return "\n".join(lines)
+        
         lines = ["<context>"]
         
         # Recursively assemble the tree structure
@@ -62,6 +83,10 @@ def xml_assembler() -> Assembler:
             elif tree.type == 'file' and tree.data:
                 file = tree.data
                 result_lines.append(f"{indent}{assemble_file(file, indent)}")
+            
+            elif tree.type == 'snippet' and tree.data:
+                snippet = tree.data
+                result_lines.append(f"{indent}{assemble_snippet(snippet, indent)}")
             
             elif tree.type == 'root':
                 # For root nodes, process all children

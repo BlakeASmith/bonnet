@@ -46,6 +46,11 @@ class StoreFileInput(BaseModel):
     include_content: bool = False
 
 
+class StoreSnippetInput(BaseModel):
+    snippet_id: Optional[str] = None
+    file_path: str
+
+
 class LinkInput(BaseModel):
     from_type: str  # 'entity', 'file', 'attribute'
     from_id: str
