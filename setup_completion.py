@@ -30,7 +30,7 @@ def setup_bash_completion():
     
     # Generate completion script
     try:
-        result = subprocess.run(['bonnet', 'completion', '--shell', 'bash'], 
+        result = subprocess.run(['python3', '-m', 'bonnet', 'completion', '--shell', 'bash'], 
                               capture_output=True, text=True, check=True)
         completion_file.write_text(result.stdout)
         print(f"✓ Generated completion script: {completion_file}")
@@ -60,7 +60,7 @@ def setup_zsh_completion():
     
     # Generate completion script
     try:
-        result = subprocess.run(['bonnet', 'completion', '--shell', 'zsh'], 
+        result = subprocess.run(['python3', '-m', 'bonnet', 'completion', '--shell', 'zsh'], 
                               capture_output=True, text=True, check=True)
         completion_file.write_text(result.stdout)
         print(f"✓ Generated completion script: {completion_file}")
@@ -93,7 +93,7 @@ def setup_fish_completion():
     
     # Generate completion script
     try:
-        result = subprocess.run(['bonnet', 'completion', '--shell', 'fish'], 
+        result = subprocess.run(['python3', '-m', 'bonnet', 'completion', '--shell', 'fish'], 
                               capture_output=True, text=True, check=True)
         completion_file.write_text(result.stdout)
         print(f"✓ Generated completion script: {completion_file}")

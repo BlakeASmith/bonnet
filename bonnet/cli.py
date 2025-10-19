@@ -205,15 +205,25 @@ def completion(shell, output):
     import os
     import sys
     
-    # Generate the completion script
-    if shell.lower() == 'bash':
-        script = cli.get_completion_script('bash')
-    elif shell.lower() == 'zsh':
-        script = cli.get_completion_script('zsh')
-    elif shell.lower() == 'fish':
-        script = cli.get_completion_script('fish')
-    else:
-        click.echo(f"Unsupported shell: {shell}", err=True)
+    # Generate the completion script using Click's built-in completion
+    try:
+        if shell.lower() == 'bash':
+            script = f"""# bash completion for bonnet
+eval "$(_BONNET_COMPLETE=bash_source python3 -m bonnet)"
+"""
+        elif shell.lower() == 'zsh':
+            script = f"""# zsh completion for bonnet
+eval "$(_BONNET_COMPLETE=zsh_source python3 -m bonnet)"
+"""
+        elif shell.lower() == 'fish':
+            script = f"""# fish completion for bonnet
+eval (env _BONNET_COMPLETE=fish_source python3 -m bonnet)
+"""
+        else:
+            click.echo(f"Unsupported shell: {shell}", err=True)
+            sys.exit(1)
+    except Exception as e:
+        click.echo(f"Error generating completion script: {e}", err=True)
         sys.exit(1)
     
     # Output the script
