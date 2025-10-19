@@ -12,6 +12,14 @@ from ._input_models import (
 )
 from . import domain
 from ._utils._cli_utils import handle_errors, find_record_with_feedback, search_and_display_records
+from ._utils._completion import (
+    complete_record_ids,
+    complete_entity_ids,
+    complete_attribute_types,
+    complete_edge_types,
+    complete_file_paths,
+    complete_search_queries,
+)
 
 
 assembler = xml_assembler()
@@ -23,12 +31,20 @@ def display_context(context: ContextTree):
 @click.group()
 @click.version_option(version='1.0.0')
 def cli():
-    """Bonnet - Knowledge Base Management CLI"""
+    """Bonnet - Knowledge Base Management CLI
+    
+    A CLI tool for managing structured knowledge base (memory) and preparing 
+    highly compressed XML context.
+    
+    Shell Completion:
+        Enable intelligent tab completion by running:
+        bonnet completion --help
+    """
     pass
 
 @cli.command()
-@click.option('--id', help='Unique Entity ID (auto-generated if not provided)')
-@click.argument('text')
+@click.option('--id', help='Unique Entity ID (auto-generated if not provided)', shell_complete=complete_entity_ids)
+@click.argument('text', shell_complete=complete_search_queries)
 @handle_errors
 def topic(id, text):
     """Store a master ENTITY record"""
@@ -37,11 +53,11 @@ def topic(id, text):
     click.echo(f"Stored topic '{text}' with ID {actual_id}")
 
 @cli.command()
-@click.option('--about', required=True, help='Record ID or search query to link to')
-@click.option('--type', 'attr_type', required=True, help='Attribute type (FACT, REF, etc.)')
-@click.option('--subject', required=True, help='Subject text')
+@click.option('--about', required=True, help='Record ID or search query to link to', shell_complete=complete_record_ids)
+@click.option('--type', 'attr_type', required=True, help='Attribute type (FACT, REF, etc.)', shell_complete=complete_attribute_types)
+@click.option('--subject', required=True, help='Subject text', shell_complete=complete_search_queries)
 @click.option('--no-interactive', is_flag=True, help='Automatically select first match when multiple records found')
-@click.argument('detail')
+@click.argument('detail', shell_complete=complete_search_queries)
 @handle_errors
 def attr(about, attr_type, subject, detail, no_interactive):
     """Store an attribute
@@ -72,9 +88,9 @@ def attr(about, attr_type, subject, detail, no_interactive):
     click.echo(f"Stored {attr_type} attribute for {target_record['type']} {target_record['id']} ({target_record['display']})")
 
 @cli.command()
-@click.option('--id', required=True, help='Unique File ID')
-@click.option('--description', help='File description')
-@click.argument('file_path')
+@click.option('--id', required=True, help='Unique File ID', shell_complete=complete_record_ids)
+@click.option('--description', help='File description', shell_complete=complete_search_queries)
+@click.argument('file_path', shell_complete=complete_file_paths)
 @handle_errors
 def file(id, description, file_path):
     """Store a file reference"""
@@ -83,11 +99,11 @@ def file(id, description, file_path):
     click.echo(f"Stored file '{file_path}' with ID {id}")
 
 @cli.command()
-@click.option('--type', 'edge_type', default='references', help='Edge type (default: references)')
-@click.option('--content', help='Edge content description')
+@click.option('--type', 'edge_type', default='references', help='Edge type (default: references)', shell_complete=complete_edge_types)
+@click.option('--content', help='Edge content description', shell_complete=complete_search_queries)
 @click.option('--no-interactive', is_flag=True, help='Automatically select first match when multiple records found')
-@click.argument('from_identifier')
-@click.argument('to_identifier')
+@click.argument('from_identifier', shell_complete=complete_record_ids)
+@click.argument('to_identifier', shell_complete=complete_record_ids)
 @handle_errors
 def link(from_identifier, to_identifier, edge_type, content, no_interactive):
     """Create a link between any two records
@@ -137,7 +153,7 @@ def link(from_identifier, to_identifier, edge_type, content, no_interactive):
     click.echo(f"Created edge {edge_id} linking {from_record['type']}:{from_record['id']} to {to_record['type']}:{to_record['id']}")
 
 @cli.command()
-@click.option('--about', required=True, help='Entity ID or search query')
+@click.option('--about', required=True, help='Entity ID or search query', shell_complete=complete_record_ids)
 @handle_errors
 def context(about):
     """Search and generate context for entities
@@ -163,7 +179,7 @@ def context(about):
 
 @cli.command()
 @click.option('--limit', default=10, help='Maximum number of results to show (default: 10)')
-@click.argument('query')
+@click.argument('query', shell_complete=complete_search_queries)
 @handle_errors
 def search(limit, query):
     """Search for records by content across all record types
@@ -173,3 +189,83 @@ def search(limit, query):
         search "color"    # Search for records containing "color"
     """
     search_and_display_records(query, limit)
+
+
+@cli.command()
+@click.option('--shell', type=click.Choice(['bash', 'zsh', 'fish'], case_sensitive=False), 
+              help='Shell type for completion script (auto-detected from $SHELL if not specified)')
+@click.option('--output', '-o', help='Output file path (default: stdout)')
+def completion(shell, output):
+    """Generate shell completion script for bonnet
+    
+    This command generates shell completion scripts that provide intelligent
+    tab completion for all bonnet commands and options.
+    
+    Setup Instructions:
+    
+    For Bash:
+        eval "$(bonnet completion --shell bash)"
+        # Or add to ~/.bashrc:
+        echo 'eval "$(bonnet completion --shell bash)"' >> ~/.bashrc
+    
+    For Zsh:
+        eval "$(bonnet completion --shell zsh)"
+        # Or add to ~/.zshrc:
+        echo 'eval "$(bonnet completion --shell zsh)"' >> ~/.zshrc
+    
+    For Fish:
+        bonnet completion --shell fish > ~/.config/fish/completions/bonnet.fish
+        # Fish automatically loads completions from this directory
+    
+    After setup, type 'bonnet ' and press TAB to see available completions.
+    """
+    import os
+    import sys
+    
+    # Auto-detect shell if not specified
+    if not shell:
+        shell_env = os.environ.get('SHELL', '').lower()
+        if 'bash' in shell_env:
+            shell = 'bash'
+        elif 'zsh' in shell_env:
+            shell = 'zsh'
+        elif 'fish' in shell_env:
+            shell = 'fish'
+        else:
+            shell = 'bash'  # Default to bash
+        click.echo(f"# Auto-detected shell: {shell}")
+    
+    # Generate the completion script using Click's built-in completion
+    try:
+        if shell.lower() == 'bash':
+            script = f"""# bash completion for bonnet
+eval "$(_BONNET_COMPLETE=bash_source bonnet)"
+"""
+        elif shell.lower() == 'zsh':
+            script = f"""# zsh completion for bonnet
+eval "$(_BONNET_COMPLETE=zsh_source bonnet)"
+"""
+        elif shell.lower() == 'fish':
+            script = f"""# fish completion for bonnet
+eval (env _BONNET_COMPLETE=fish_source bonnet)
+"""
+        else:
+            click.echo(f"Unsupported shell: {shell}", err=True)
+            sys.exit(1)
+    except Exception as e:
+        click.echo(f"Error generating completion script: {e}", err=True)
+        sys.exit(1)
+    
+    # Output the script
+    if output:
+        try:
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(output), exist_ok=True)
+            with open(output, 'w') as f:
+                f.write(script)
+            click.echo(f"Completion script written to {output}")
+        except Exception as e:
+            click.echo(f"Error writing to {output}: {e}", err=True)
+            sys.exit(1)
+    else:
+        click.echo(script)

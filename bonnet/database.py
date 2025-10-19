@@ -820,6 +820,135 @@ def search_records(query: str) -> List[Dict]:
     conn.close()
     return results
 
+
+def get_distinct_attribute_types() -> List[str]:
+    """
+    Get all distinct attribute types from the database.
+    
+    Returns:
+        List of distinct attribute types
+    """
+    init_database()
+    conn = sqlite3.connect(_db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT DISTINCT attr_type FROM attributes 
+        WHERE attr_type IS NOT NULL AND attr_type != ''
+        ORDER BY attr_type
+    ''')
+    
+    results = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return results
+
+
+def get_distinct_edge_types() -> List[str]:
+    """
+    Get all distinct edge types from the database.
+    
+    Returns:
+        List of distinct edge types
+    """
+    init_database()
+    conn = sqlite3.connect(_db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT DISTINCT edge_type FROM edges 
+        WHERE edge_type IS NOT NULL AND edge_type != ''
+        ORDER BY edge_type
+    ''')
+    
+    results = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return results
+
+
+def get_recent_records(limit: int = 10) -> List[Dict]:
+    """
+    Get recent records for completion suggestions.
+    
+    Args:
+        limit: Maximum number of records to return
+        
+    Returns:
+        List of recent records
+    """
+    init_database()
+    conn = sqlite3.connect(_db_path)
+    cursor = conn.cursor()
+    
+    # Get recent records from all tables
+    cursor.execute('''
+        SELECT n.table_name, n.record_id, n.searchable_content, n.created_at
+        FROM nodes n
+        ORDER BY n.created_at DESC
+        LIMIT ?
+    ''', (limit,))
+    
+    results = []
+    for row in cursor.fetchall():
+        table_name, record_id, searchable_content, created_at = row
+        results.extend(_get_record_data(cursor, table_name, record_id, searchable_content))
+    
+    conn.close()
+    return results
+
+
+def search_records_by_type(record_type: str, query: str = "", limit: int = 10) -> List[Dict]:
+    """
+    Search for records of a specific type.
+    
+    Args:
+        record_type: Type of record to search for ('entity', 'attribute', 'file')
+        query: Search query string (optional)
+        limit: Maximum number of results
+        
+    Returns:
+        List of matching records
+    """
+    init_database()
+    conn = sqlite3.connect(_db_path)
+    cursor = conn.cursor()
+    
+    table_name = {
+        'entity': 'entities',
+        'attribute': 'attributes', 
+        'file': 'files'
+    }.get(record_type)
+    
+    if not table_name:
+        return []
+    
+    if query:
+        # Search with query
+        cursor.execute(f'''
+            SELECT n.id, n.table_name, n.record_id, n.searchable_content
+            FROM nodes n
+            JOIN nodes_fts fts ON n.rowid = fts.rowid
+            WHERE n.table_name = ? AND nodes_fts MATCH ?
+            ORDER BY n.created_at DESC
+            LIMIT ?
+        ''', (table_name, query, limit))
+    else:
+        # Get recent records of this type
+        cursor.execute(f'''
+            SELECT n.id, n.table_name, n.record_id, n.searchable_content
+            FROM nodes n
+            WHERE n.table_name = ?
+            ORDER BY n.created_at DESC
+            LIMIT ?
+        ''', (table_name, limit))
+    
+    results = []
+    for row in cursor.fetchall():
+        node_id, table_name, record_id, searchable_content = row
+        results.extend(_get_record_data(cursor, table_name, record_id, searchable_content))
+    
+    conn.close()
+    return results
+
 def _get_record_data(cursor, table_name: str, record_id: str, searchable_content: str) -> List[Dict]:
     """Helper function to get record data based on table name."""
     results = []
