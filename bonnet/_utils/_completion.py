@@ -3,6 +3,8 @@ Shell completion utilities for the bonnet CLI.
 """
 import click
 from typing import List, Optional
+
+from bonnet.database import get_all_short_names
 from .. import domain
 
 
@@ -80,6 +82,21 @@ def complete_attribute_types(ctx: click.Context, param: click.Parameter, incompl
         return [attr_type for attr_type in fallback_types if attr_type.lower().startswith(incomplete.lower())]
 
 
+def complete_attribute_subjects(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
+    """
+    Complete attribute subjects for the --subject parameter in attr command.
+    """
+    try:
+        # Get distinct attribute subjects from the database
+        subjects = domain.database.get_distinct_attribute_subjects()
+        
+        # Filter based on incomplete string
+        return [subject for subject in subjects if subject.lower().startswith(incomplete.lower())]
+    except Exception:
+        # Return empty list if database query fails
+        return []
+
+
 def complete_edge_types(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
     """
     Complete edge types for the --type parameter in link command.
@@ -99,44 +116,6 @@ def complete_edge_types(ctx: click.Context, param: click.Parameter, incomplete: 
         fallback_types = ['references', 'relates_to', 'depends_on', 'contains', 'part_of']
         return [edge_type for edge_type in fallback_types if edge_type.lower().startswith(incomplete.lower())]
 
-
-def complete_file_paths(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
-    """
-    Complete file paths for file-related parameters.
-    """
-    import os
-    import glob
-    
-    # If incomplete is empty, start from current directory
-    if not incomplete:
-        incomplete = "./"
-    
-    # Handle tilde expansion
-    incomplete = os.path.expanduser(incomplete)
-    
-    # Get the directory and pattern
-    if os.path.isdir(incomplete):
-        # If it's a directory, add a trailing slash and glob for all files
-        pattern = os.path.join(incomplete, "*")
-    else:
-        # If it's a file pattern, use it as is
-        pattern = incomplete + "*"
-    
-    try:
-        # Get matching files and directories
-        matches = glob.glob(pattern)
-        
-        # Convert to relative paths and add directories with trailing slash
-        completions = []
-        for match in matches:
-            if os.path.isdir(match):
-                completions.append(match + "/")
-            else:
-                completions.append(match)
-        
-        return completions[:20]  # Limit to 20 results
-    except Exception:
-        return []
 
 
 def complete_search_queries(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
@@ -177,3 +156,88 @@ def complete_search_queries(ctx: click.Context, param: click.Parameter, incomple
         return completions
     except Exception:
         return []
+
+
+def complete_file_ids(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
+    """
+    Complete file IDs specifically for file-related parameters.
+    """
+    try:
+        # If incomplete is empty, get recent files
+        if not incomplete:
+            recent_results = domain.database.search_records_by_type('file', '', 5)
+            return [result['id'] for result in recent_results if result.get('id')]
+        
+        # Search for files that match the incomplete string
+        results = domain.database.search_records_by_type('file', incomplete, 10)
+        
+        # Extract file IDs from the results
+        completions = []
+        for result in results:
+            if result.get('id'):
+                completions.append(result['id'])
+        
+        return completions
+    except Exception:
+        return []
+
+
+def complete_stored_file_paths(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
+    """
+    Complete file paths from stored file records in the database.
+    Returns file paths that match the incomplete string.
+    """
+    try:
+        import sqlite3
+        
+        # Query database directly for efficiency
+        conn = sqlite3.connect(domain.database._db_path)
+        cursor = conn.cursor()
+        
+        if not incomplete:
+            # Get recent file paths
+            cursor.execute('''
+                SELECT file_path FROM files 
+                ORDER BY created_at DESC 
+                LIMIT 10
+            ''')
+        else:
+            # Search for file paths matching the incomplete string
+            cursor.execute('''
+                SELECT file_path FROM files 
+                WHERE file_path LIKE ?
+                ORDER BY created_at DESC 
+                LIMIT 20
+            ''', (f'%{incomplete}%',))
+        
+        completions = []
+        seen = set()
+        
+        for (file_path,) in cursor.fetchall():
+            if file_path and file_path not in seen:
+                seen.add(file_path)
+                completions.append(file_path)
+        
+        conn.close()
+        return completions
+    except Exception:
+        return []
+
+def complete_short_names(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
+    """
+    Complete short names for the --short-name parameter in topic command.
+    """
+    return [short_name for short_name in get_all_short_names() if short_name.lower().startswith(incomplete.lower())]
+
+def complete_about(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
+    """
+    Complete about for the --about parameter in attr and link commands.
+    """
+    # Get short names that match
+    short_names = [short_name for short_name in get_all_short_names() if short_name.lower().startswith(incomplete.lower())]
+    
+    record_ids = complete_record_ids(ctx, param, incomplete)
+    
+    # Combine and return unique values
+    return list(set(short_names + record_ids))
+    

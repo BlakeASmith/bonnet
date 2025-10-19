@@ -6,19 +6,17 @@ from ._input_models import (
     SearchEntitiesInput,
     StoreEntityInput,
     StoreAttributeInput,
-    CreateEdgeInput,
     StoreFileInput,
     LinkInput,
 )
 from . import domain
 from ._utils._cli_utils import handle_errors, find_record_with_feedback, search_and_display_records
 from ._utils._completion import (
-    complete_record_ids,
-    complete_entity_ids,
     complete_attribute_types,
+    complete_attribute_subjects,
     complete_edge_types,
-    complete_file_paths,
     complete_search_queries,
+    complete_about,
 )
 
 
@@ -43,19 +41,21 @@ def cli():
     pass
 
 @cli.command()
-@click.option('--id', help='Unique Entity ID (auto-generated if not provided)', shell_complete=complete_entity_ids)
-@click.argument('text', shell_complete=complete_search_queries)
+@click.option('--id', '-i', help='Unique Entity ID (auto-generated if not provided)')
+@click.option('--short-name', '-x', help='Short name for the entity')
+@click.argument('text')
 @handle_errors
-def topic(id, text):
+def topic(id, short_name, text):
     """Store a master ENTITY record"""
-    input_model = StoreEntityInput(e_id=id, name=text)
+    input_model = StoreEntityInput(e_id=id, name=text, short_name=short_name)
     actual_id = domain.store_entity(input_model)
-    click.echo(f"Stored topic '{text}' with ID {actual_id}")
+    short_name_msg = f" (short name: {short_name})" if short_name else ""
+    click.echo(f"Stored topic '{text}'{short_name_msg} with ID {actual_id}")
 
 @cli.command()
-@click.option('--about', required=True, help='Record ID or search query to link to', shell_complete=complete_record_ids)
+@click.option('--about', required=True, help='Record ID or search query to link to', shell_complete=complete_about)
 @click.option('--type', 'attr_type', required=True, help='Attribute type (FACT, REF, etc.)', shell_complete=complete_attribute_types)
-@click.option('--subject', required=True, help='Subject text', shell_complete=complete_search_queries)
+@click.option('--subject', required=True, help='Subject text', shell_complete=complete_attribute_subjects)
 @click.option('--no-interactive', is_flag=True, help='Automatically select first match when multiple records found')
 @click.argument('detail', shell_complete=complete_search_queries)
 @handle_errors
@@ -88,9 +88,9 @@ def attr(about, attr_type, subject, detail, no_interactive):
     click.echo(f"Stored {attr_type} attribute for {target_record['type']} {target_record['id']} ({target_record['display']})")
 
 @cli.command()
-@click.option('--id', required=True, help='Unique File ID', shell_complete=complete_record_ids)
-@click.option('--description', help='File description', shell_complete=complete_search_queries)
-@click.argument('file_path', shell_complete=complete_file_paths)
+@click.option('--id', required=True, help='Unique File ID')
+@click.option('--description', help='File description')
+@click.argument('file_path')
 @handle_errors
 def file(id, description, file_path):
     """Store a file reference"""
@@ -100,10 +100,10 @@ def file(id, description, file_path):
 
 @cli.command()
 @click.option('--type', 'edge_type', default='references', help='Edge type (default: references)', shell_complete=complete_edge_types)
-@click.option('--content', help='Edge content description', shell_complete=complete_search_queries)
+@click.option('--content', help='Edge content description')
 @click.option('--no-interactive', is_flag=True, help='Automatically select first match when multiple records found')
-@click.argument('from_identifier', shell_complete=complete_record_ids)
-@click.argument('to_identifier', shell_complete=complete_record_ids)
+@click.argument('from_identifier', shell_complete=complete_about)
+@click.argument('to_identifier', shell_complete=complete_about)
 @handle_errors
 def link(from_identifier, to_identifier, edge_type, content, no_interactive):
     """Create a link between any two records
@@ -153,7 +153,7 @@ def link(from_identifier, to_identifier, edge_type, content, no_interactive):
     click.echo(f"Created edge {edge_id} linking {from_record['type']}:{from_record['id']} to {to_record['type']}:{to_record['id']}")
 
 @cli.command()
-@click.option('--about', required=True, help='Entity ID or search query', shell_complete=complete_record_ids)
+@click.option('--about', required=True, help='Entity ID or search query', shell_complete=complete_about)
 @handle_errors
 def context(about):
     """Search and generate context for entities
@@ -179,7 +179,7 @@ def context(about):
 
 @cli.command()
 @click.option('--limit', default=10, help='Maximum number of results to show (default: 10)')
-@click.argument('query', shell_complete=complete_search_queries)
+@click.argument('query', shell_complete=complete_about)
 @handle_errors
 def search(limit, query):
     """Search for records by content across all record types

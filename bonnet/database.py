@@ -52,6 +52,7 @@ def init_database():
                 CREATE TABLE IF NOT EXISTS entities (
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
+                    short_name TEXT,
                     node_id TEXT NOT NULL,
                     FOREIGN KEY (node_id) REFERENCES nodes(id)
                 )
@@ -192,7 +193,10 @@ def init_database():
 @searchable_builder('entities')
 def build_entity_searchable_content(record_data: dict) -> str:
     """Build searchable content for an entity node."""
-    return record_data.get('name', '')
+    content_parts = [record_data.get('name', '')]
+    if record_data.get('short_name'):
+        content_parts.append(record_data['short_name'])
+    return ' '.join(content_parts)
 
 @searchable_builder('attributes')
 def build_attribute_searchable_content(record_data: dict) -> str:
@@ -231,13 +235,14 @@ def create_node(table_name: str, record_id: str, record_data: dict) -> str:
     
     return node_id
 
-def store_entity(e_id: str, entity_name: str) -> None:
+def store_entity(e_id: str, entity_name: str, short_name: str = None) -> None:
     """Store a master ENTITY record."""
     init_database()
     
     # First create the node
     entity_data = {
-        'name': entity_name
+        'name': entity_name,
+        'short_name': short_name
     }
     node_id = create_node('entities', e_id, entity_data)
     
@@ -249,9 +254,9 @@ def store_entity(e_id: str, entity_name: str) -> None:
         
         # Insert entity record with node_id
         cursor.execute('''
-            INSERT INTO entities (id, name, node_id)
-            VALUES (?, ?, ?)
-        ''', (e_id, entity_name, node_id))
+            INSERT INTO entities (id, name, short_name, node_id)
+            VALUES (?, ?, ?, ?)
+        ''', (e_id, entity_name, short_name, node_id))
 
 def entity_exists(e_id: str) -> bool:
     """Check if an entity with the given ID already exists."""
@@ -466,7 +471,7 @@ def get_record_by_node(node_id: str) -> Dict:
     # Get record from appropriate table
     if table_name == 'entities':
         cursor.execute('''
-            SELECT id, name, node_id
+            SELECT id, name, short_name, node_id
             FROM entities WHERE id = ?
         ''', (record_id,))
         
@@ -476,7 +481,8 @@ def get_record_by_node(node_id: str) -> Dict:
                 'type': 'entity',
                 'id': row[0],
                 'name': row[1],
-                'node_id': row[2]
+                'short_name': row[2],
+                'node_id': row[3]
             }
     
     elif table_name == 'attributes':
@@ -523,14 +529,14 @@ def get_entity_context(e_id: str) -> Dict:
     
     # Get entity info
     cursor.execute('''
-        SELECT name, node_id FROM entities WHERE id = ?
+        SELECT name, short_name, node_id FROM entities WHERE id = ?
     ''', (e_id,))
     entity_row = cursor.fetchone()
     
     if not entity_row:
         raise ValueError(f"Entity ID {e_id} not found")
     
-    entity_name, entity_node_id = entity_row
+    entity_name, entity_short_name, entity_node_id = entity_row
     
     # Get all attributes (relationships are now handled via graph edges)
     cursor.execute('''
@@ -554,6 +560,7 @@ def get_entity_context(e_id: str) -> Dict:
     return {
         'e_id': e_id,
         'entity_name': entity_name,
+        'entity_short_name': entity_short_name,
         'entity_node_id': entity_node_id,
         'attributes': attributes
     }
@@ -787,6 +794,35 @@ def get_file_node_id(file_id: str) -> str:
         return row[0] if row else None
 
 
+def get_file_by_id(file_id: str) -> Optional[Dict]:
+    """
+    Get a file record by its ID.
+    
+    Args:
+        file_id: The file ID
+        
+    Returns:
+        Dictionary containing file data (id, file_path, description) or None if not found
+    """
+    init_database()
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, file_path, description, node_id, created_at
+            FROM files WHERE id = ?
+        ''', (file_id,))
+        row = cursor.fetchone()
+        if row:
+            return {
+                'id': row[0],
+                'file_path': row[1],
+                'description': row[2],
+                'node_id': row[3],
+                'created_at': row[4]
+            }
+        return None
+
+
 
 
 def search_records(query: str) -> List[Dict]:
@@ -805,17 +841,39 @@ def search_records(query: str) -> List[Dict]:
     
     results = []
     
-    # Search using FTS on nodes table - this will match both IDs and content
-    cursor.execute('''
-        SELECT n.id, n.table_name, n.record_id, n.searchable_content
-        FROM nodes n
-        JOIN nodes_fts fts ON n.rowid = fts.rowid
-        WHERE nodes_fts MATCH ?
-    ''', (query,))
+    # Handle empty query - return recent records instead
+    if not query or not query.strip():
+        conn.close()
+        return get_recent_records(10)
     
-    for row in cursor.fetchall():
-        node_id, table_name, record_id, searchable_content = row
-        results.extend(_get_record_data(cursor, table_name, record_id, searchable_content))
+    # Escape FTS5 special characters to prevent syntax errors
+    # FTS5 special characters: " * : ( ) [ ] { } ^ $ . + ? | \ /
+    fts_query = query.replace('"', '""')  # Escape quotes
+    
+    try:
+        # Search using FTS on nodes table - this will match both IDs and content
+        cursor.execute('''
+            SELECT n.id, n.table_name, n.record_id, n.searchable_content
+            FROM nodes n
+            JOIN nodes_fts fts ON n.rowid = fts.rowid
+            WHERE nodes_fts MATCH ?
+        ''', (fts_query,))
+        
+        for row in cursor.fetchall():
+            node_id, table_name, record_id, searchable_content = row
+            results.extend(_get_record_data(cursor, table_name, record_id, searchable_content))
+    except sqlite3.OperationalError:
+        # If FTS5 query fails, fall back to LIKE search
+        cursor.execute('''
+            SELECT id, table_name, record_id, searchable_content
+            FROM nodes
+            WHERE searchable_content LIKE ? OR record_id LIKE ?
+            LIMIT 20
+        ''', (f'%{query}%', f'%{query}%'))
+        
+        for row in cursor.fetchall():
+            node_id, table_name, record_id, searchable_content = row
+            results.extend(_get_record_data(cursor, table_name, record_id, searchable_content))
     
     conn.close()
     return results
@@ -836,6 +894,28 @@ def get_distinct_attribute_types() -> List[str]:
         SELECT DISTINCT attr_type FROM attributes 
         WHERE attr_type IS NOT NULL AND attr_type != ''
         ORDER BY attr_type
+    ''')
+    
+    results = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return results
+
+
+def get_distinct_attribute_subjects() -> List[str]:
+    """
+    Get all distinct attribute subjects from the database.
+    
+    Returns:
+        List of distinct attribute subjects
+    """
+    init_database()
+    conn = sqlite3.connect(_db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT DISTINCT subject FROM attributes 
+        WHERE subject IS NOT NULL AND subject != ''
+        ORDER BY subject
     ''')
     
     results = [row[0] for row in cursor.fetchall()]
@@ -955,15 +1035,19 @@ def _get_record_data(cursor, table_name: str, record_id: str, searchable_content
     
     if table_name == 'entities':
         cursor.execute('''
-            SELECT id, name FROM entities WHERE id = ?
+            SELECT id, name, short_name FROM entities WHERE id = ?
         ''', (record_id,))
         record_row = cursor.fetchone()
         if record_row:
+            display = record_row[1]  # name
+            if record_row[2]:  # short_name
+                display += f" ({record_row[2]})"
             results.append({
                 'type': 'entity',
                 'id': record_row[0],
                 'name': record_row[1],
-                'display': record_row[1],
+                'short_name': record_row[2],
+                'display': display,
                 'searchable_content': searchable_content
             })
     
@@ -1004,3 +1088,47 @@ def _get_record_data(cursor, table_name: str, record_id: str, searchable_content
             })
     
     return results
+
+def _get_short_name_tables() -> List[str]:
+    """Helper function to get tables that have a `short_name` field."""
+    init_database()
+    conn = sqlite3.connect(_db_path)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT name FROM sqlite_master WHERE type = 'table' AND sql LIKE '%short_name%'
+    ''')
+    return [row[0] for row in cursor.fetchall()]
+
+def get_short_names(table: str) -> List[str]:
+    """Helper function to get short names from a table."""
+    init_database()
+    conn = sqlite3.connect(_db_path)
+    cursor = conn.cursor()
+    
+    # Validate table name to prevent SQL injection (whitelist approach)
+    valid_tables = ['entities', 'attributes', 'files']
+    if table not in valid_tables:
+        conn.close()
+        return []
+    
+    # Use string formatting for table name (safe after validation)
+    cursor.execute(f'''
+        SELECT DISTINCT short_name FROM {table}
+        WHERE short_name IS NOT NULL AND short_name != ''
+    ''')
+    
+    results = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return results
+
+def get_all_short_names() -> List[str]:
+    """Helper function to get all short names from all tables."""
+    tables = _get_short_name_tables()
+    all_short_names = []
+    
+    for table in tables:
+        short_names = get_short_names(table)
+        all_short_names.extend(short_names)
+    
+    # Return unique short names
+    return list(set(all_short_names))

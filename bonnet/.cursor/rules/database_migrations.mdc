@@ -1,0 +1,5 @@
+---
+globs: *db*
+alwaysApply: false
+---
+This project uses an ephemoral sqllite database file, there is no need to perform migrations as the file can be deleted

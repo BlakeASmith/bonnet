@@ -1,7 +1,7 @@
 """Domain layer that returns Pydantic models after database fetches."""
 
 from ._models import ContextTree, Node, Edge, build_model_from_record
-from typing import Dict, List, Optional
+from typing import Dict, List 
 from ._input_models import (
     SearchInput,
     SearchEntitiesInput,
@@ -122,7 +122,7 @@ def store_entity(input: StoreEntityInput) -> str:
     Store a master ENTITY record.
     
     Args:
-        input: StoreEntityInput containing e_id (optional) and name
+        input: StoreEntityInput containing e_id (optional), name, and short_name (optional)
         
     Returns:
         The entity ID used (either provided or generated)
@@ -130,7 +130,7 @@ def store_entity(input: StoreEntityInput) -> str:
     # Generate simple topic ID if not provided
     e_id = input.e_id if input.e_id is not None else generate_topic_id()
     
-    database.store_entity(e_id, input.name)
+    database.store_entity(e_id, input.name, input.short_name)
     return e_id
 
 

@@ -32,7 +32,8 @@ def xml_assembler() -> Assembler:
             # Render based on the type
             if tree.type == 'entity' and tree.data:
                 entity = tree.data
-                result_lines.append(f"{indent}<entity id=\"{entity.id}\" name=\"{entity.name}\">")
+                short_name_attr = f" short_name=\"{entity.short_name}\"" if entity.short_name else ""
+                result_lines.append(f"{indent}<entity id=\"{entity.id}\" name=\"{entity.name}\"{short_name_attr}>")
                 
                 # Process children (which are the actual connected nodes via edges)
                 for child in tree.children:

@@ -17,6 +17,7 @@ class SearchInput(BaseModel):
 class StoreEntityInput(BaseModel):
     e_id: Optional[str] = None
     name: str
+    short_name: Optional[str] = None
 
 
 class StoreAttributeInput(BaseModel):

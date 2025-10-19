@@ -13,6 +13,7 @@ class Attribute(BaseModel):
 class Entity(BaseModel):
     id: str
     name: str
+    short_name: Optional[str] = None
 
 
 class File(BaseModel):
@@ -75,7 +76,8 @@ def build_entity_model(record_data: Dict[str, Any]) -> Entity:
     """Build an Entity model from database record data."""
     return Entity(
         id=record_data['id'],
-        name=record_data['name']
+        name=record_data['name'],
+        short_name=record_data.get('short_name')
     )
 
 
