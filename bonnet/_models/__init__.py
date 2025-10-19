@@ -19,7 +19,7 @@ class Entity(BaseModel):
 class File(BaseModel):
     id: str
     file_path: str
-    description: str
+    description: Optional[str] = None
 
 
 class Node(BaseModel):

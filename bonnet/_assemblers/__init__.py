@@ -20,7 +20,10 @@ def xml_assembler() -> Assembler:
             return f"<attribute id=\"{attribute.id}\" type=\"{attribute.type}\">{attribute.subject}:{attribute.detail}</attribute>"
         
         def assemble_file(file: File) -> str:
-            return f"<file id=\"{file.id}\" path=\"{file.file_path}\">{file.description}</file>"
+            if file.description:
+                return f"<file id=\"{file.id}\" path=\"{file.file_path}\"><description>{file.description}</description></file>"
+            else:
+                return f"<file id=\"{file.id}\" path=\"{file.file_path}\"></file>"
         
         lines = ["<context>"]
         
