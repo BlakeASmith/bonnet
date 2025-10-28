@@ -335,6 +335,30 @@ def search_nodes(query: str) -> List[Dict]:
     
     results = []
     
+    # First try to find by exact record ID if it looks like an ID
+    if query.startswith(('T', 'A', 'F')) or '-' in query:
+        # Search for nodes by record_id
+        cursor.execute('''
+            SELECT n.id, n.table_name, n.record_id, n.searchable_content
+            FROM nodes n
+            WHERE n.record_id = ?
+        ''', (query,))
+        
+        for row in cursor.fetchall():
+            results.append({
+                'node_id': row[0],
+                'table_name': row[1],
+                'record_id': row[2],
+                'searchable_content': row[3],
+                'source': 'node'
+            })
+        
+        # If we found results by ID, return them (don't do FTS search)
+        if results:
+            conn.close()
+            return results
+    
+    # If no ID-based results, do FTS search
     # Escape the query for FTS
     escaped_query = f'"{query}"'
     
